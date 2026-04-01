@@ -97,7 +97,7 @@ export default function ZthixDeterministicStorefront() {
     },
     CN: {
       hero_title: "ZTHIX跨境风控系统",
-      hero_desc: "ZTHIX跨境风控系统,它采用确定性“数学模型+人工”双审核，替代纯人工肉眼审单，并进行责任或错误溯源追踪，确保在货物装柜前拦截海关/船司罚单。",
+      hero_desc: "ZTHIX跨境风控系统, 采用确定性“数学模型+人工”双审核，替代纯人工肉眼审单，并进行责任或错误溯源追踪，确保在货物装柜前拦截海关/船司罚单。",
       status_label: "系统状态：安全",
       
       pipeline_title: "双重审核工作流",
