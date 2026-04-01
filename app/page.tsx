@@ -178,7 +178,7 @@ export default function ZthixDeterministicStorefront() {
 
       {/* HERO SECTION */}
       <section className="relative z-10 pt-20 pb-20 px-6 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-12 min-h-[70vh]">
-        <div className="lg:w-1/2 relative z-10 text-justify">
+        <div className="lg:w-1/2 relative z-10 text-left">
           <div className="mb-6 flex items-center gap-3">
             <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(6,182,212,0.6)]"></div>
             <span className="text-[11px] font-mono tracking-widest text-slate-400 uppercase">{active.status_label}</span>
@@ -186,7 +186,7 @@ export default function ZthixDeterministicStorefront() {
           <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight leading-[1.1] mb-4">
             {active.hero_title}
           </h1>
-          <p className="text-lg md:text-xl text-cyan-50/70 leading-relaxed font-light border-l-2 border-cyan-600 pl-6 text-justify">
+          <p className="text-lg md:text-xl text-cyan-50/70 leading-relaxed font-light border-l-2 border-cyan-600 pl-6 text-left">
             {active.hero_desc}
           </p>
         </div>
@@ -272,7 +272,7 @@ export default function ZthixDeterministicStorefront() {
                   {idx === 0 ? <Fingerprint className="w-8 h-8 group-hover:scale-110 transition-transform duration-500" /> : idx === 1 ? <Lock className="w-8 h-8 group-hover:scale-110 transition-transform duration-500" /> : <Database className="w-8 h-8 group-hover:scale-110 transition-transform duration-500" />}
                 </div>
                 <h4 className="text-sm font-bold text-white uppercase tracking-widest mb-4 relative z-10">{val.title}</h4>
-                <p className="text-xs text-slate-400 leading-relaxed relative z-10 text-justify">{val.desc}</p>
+                <p className="text-xs text-slate-400 leading-relaxed relative z-10 text-left">{val.desc}</p>
               </div>
             ))}
           </div>
