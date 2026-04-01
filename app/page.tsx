@@ -105,21 +105,21 @@ export default function ZthixDeterministicStorefront() {
 
       trigger_title: "责任拦截参数",
       triggers: [
-        { title: "SEI 重量瞒报", desc: "SEI 瞒报导致船公司罚款。我们的数学模型在进港前使错误数据无效化。" },
-        { title: "不可信的人类变量", desc: "您的 Authorized Broker 进行的纯人工视觉审单经常失误。我们采用确定性“数学验证+人工”双审核取代。" },
-        { title: "责任绝对分配", desc: "发生罚款时工厂拒不认账。ZTHIX 提供数学铁证以强制追责。" },
-        { title: "贸易术语欺诈", desc: "SEI 将隐蔽费用夹带进 FOB 发票。系统自动检测并隔离此类异常。" }
+        { title: "SEI 重量瞒报", desc: "外贸工厂/公司瞒报导致船公司罚款。我们的数学模型在进港前使错误数据无效化。" },
+        { title: "不可信的人类变量", desc: "您的Authorized Broker进行的纯人工视觉审单经常失误。我们采用确定性“数学验证+人工”双审核取代。" },
+        { title: "责任绝对分配", desc: "发生罚款时外贸工厂/公司拒不认账。ZTHIX提供数学铁证以强制追责。" },
+        { title: "贸易术语欺诈", desc: "外贸工厂/公司将隐蔽费用夹带进FOB发票。系统自动检测并隔离此类异常。" }
       ],
       
       value_title: "ZTHIX核心基础设施",
       values: [
-        { title: "ZTHIX-UID 生成", desc: "每笔交易分配唯一的 ZTHIX-UID。不可信的人类数据将被隔离，直至数学证明完全吻合。" },
-        { title: "Immutable Compliance Dossier", desc: "干净的数据生成可验证档案 (www.zthix.com/verify/ZTHIX-UID)。您将掌握绝对的原产地证据。" },
-        { title: "Authorized Broker 协同", desc: "向您的 Authorized Broker 进行无缝的追踪溯源数据交接，彻底消除人工录入带来的责任风险。" }
+        { title: "ZTHIX-UID 生成", desc: "每笔交易分配唯一的ZTHIX-UID。不可信的人类数据将被隔离，直至数学证明完全吻合。" },
+        { title: "Immutable Compliance Dossier 溯源追踪", desc: "干净的数据生成可验证档案 (www.zthix.com/verify/ZTHIX-UID)。您将掌握绝对的原产地证据。" },
+        { title: "Authorized Broker 协同", desc: "向您的Authorized Broker进行无缝的追踪溯源数据交接，彻底消除人工录入带来的责任风险。" }
       ],
       
       audit_title: "风控审计试单",
-      audit_desc: "上传标准商业单证。ZTHIX 引擎将执行数学解剖以隔离责任和错误追踪溯源。",
+      audit_desc: "上传标准商业单证。ZTHIX引擎将执行数学解剖以隔离责任和错误追踪溯源。",
       btn_upload: "选择本地文件",
       hashing_text: "正在生成本地哈希值...",
       ready_title: "本地安全哈希已锁定",
