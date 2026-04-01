@@ -234,8 +234,8 @@ export default function ZthixDeterministicStorefront() {
         <div className="lg:w-1/3 w-full relative">
            <div className="aspect-square bg-[#0a0f1c] rounded-2xl border border-slate-800 relative flex items-center justify-center overflow-hidden">
              <img 
-                src="https://images.unsplash.com/photo-1639762681485-074b7f4ec651?q=80&w=1000&auto=format&fit=crop" 
-                alt="Risk Control Nodes" 
+                src="/risk-nodes-clean.png" 
+                alt="Logistics network visualization" // Surgical execution: descriptive and accessible
                 className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-screen"
              />
              <Network className="w-24 h-24 text-green-500 relative z-10" />
