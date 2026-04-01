@@ -160,7 +160,7 @@ export default function ZthixDeterministicStorefront() {
       <nav className="relative z-50 border-b border-slate-800 bg-[#030712]/90 backdrop-blur-md sticky top-0">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center relative z-10">
           <div className="flex items-center gap-3 relative z-10">
-            <Shield className="w-6 h-6 text-[#39FF14]" />
+            <img src="/zthix-logo.png" alt="ZTHIX Logo" className="h-7 w-auto object-contain shrink-0" />
             <span className="text-white font-bold tracking-[0.2em] text-lg uppercase">ZTHIX</span>
           </div>
           <button 
