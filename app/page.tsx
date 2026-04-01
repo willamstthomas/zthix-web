@@ -238,7 +238,7 @@ export default function ZthixDeterministicStorefront() {
                 alt="Risk Control Nodes" 
                 className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-screen"
              />
-             <Network className="w-24 h-24 text-blue-600 relative z-10" />
+             <Network className="w-24 h-24 text-green-500 relative z-10" />
            </div>
         </div>
 
@@ -249,7 +249,7 @@ export default function ZthixDeterministicStorefront() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {active.triggers.map((trigger, idx) => (
               <div key={idx} className="bg-[#050A15] border border-slate-800 p-6 hover:border-indigo-600/50 transition-colors flex gap-6 items-start group relative">
-                <Target className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0 relative z-10" />
+                <Target className="w-5 h-5 text-purple-500 mt-1 flex-shrink-0 relative z-10" />
                 <div className="relative z-10">
                   <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3 leading-none relative z-10">{trigger.title}</h4>
                   <p className="text-xs text-slate-400 leading-relaxed font-mono relative z-10">{trigger.desc}</p>
