@@ -398,16 +398,6 @@ export default function ZthixDeterministicStorefront() {
                     {active.btn_upload}
                     <ChevronRight className="w-5 h-5 group-hover/drop:translate-x-0.5 transition-transform" />
                   </button>
-
-                  {contactInfo.length > 0 && (
-                    <button 
-                      onClick={handleSubscribeOnly}
-                      className={`${leadStatus === 'success' ? 'bg-green-600/20 text-green-400 border-green-500' : 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300'} border font-mono font-bold text-xs px-8 py-4 rounded transition-all shadow-md hover:-translate-y-0.5 active:scale-95 w-full sm:w-auto justify-center flex items-center gap-2`}
-                    >
-                      {leadStatus === 'success' && <CheckCircle2 className="w-4 h-4" />}
-                      {leadStatus === 'success' ? active.btn_subscribe_success : active.btn_subscribe}
-                    </button>
-                  )}
                 </div>
               </>
             )}
@@ -490,8 +480,18 @@ export default function ZthixDeterministicStorefront() {
             <h4 className="text-white font-bold uppercase tracking-widest text-[11px] mb-4 flex items-center justify-center md:justify-start gap-2 relative z-10">
               <Globe2 className="w-4 h-4 text-slate-400 relative z-10" /> {active.contact_title}
             </h4>
-            <div className="flex flex-col gap-3 text-[11px] font-mono text-slate-400 relative z-10 font-bold uppercase tracking-widest">
-              {active.contact_links.map((link, idx) => (
+           <div className="flex flex-col gap-3 text-[11px] font-mono text-slate-400 relative z-10 font-bold uppercase tracking-widest">
+              {/* Native Copy-to-Clipboard Email Row */}
+              <button 
+                onClick={() => navigator.clipboard.writeText('info@zthix.com')}
+                className="text-slate-400 hover:text-white transition-colors flex items-center justify-center md:justify-start gap-2 relative z-10 font-bold uppercase tracking-widest group cursor-pointer text-left"
+                title="Click to copy email address"
+              >
+                EMAIL: INFO@ZTHIX.COM <Copy className="w-3.5 h-3.5 relative z-10 group-active:scale-90 transition-transform" />
+              </button>
+              
+              {/* Filter out the old email link, render the rest (RedNote/WhatsApp) with ExternalLink arrow */}
+              {active.contact_links.filter(l => !l.label.includes('EMAIL')).map((link, idx) => (
                 <a 
                   key={idx}
                   href={link.url} 
