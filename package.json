@@ -8,12 +8,13 @@
     "start": "next start",
     "lint": "eslint"
   },
-  "dependencies": {
-  "@vercel/blob": "latest",
-  "lucide-react": "^0.x.x",
-  "next": "14.x.x",
-  // ... other dependencies
-},
+"dependencies": {
+    "@vercel/blob": "latest",
+    "lucide-react": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
