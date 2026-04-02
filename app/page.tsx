@@ -27,24 +27,65 @@ export default function ZthixDeterministicStorefront() {
   const [uploadState, setUploadState] = useState<'idle' | 'hashing' | 'ready'>('idle');
   const [ticketId, setTicketId] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  const [contactInfo, setContactInfo] = useState<string>(''); // New State for Radar Lead
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const xhsProfileUrl = "https://www.xiaohongshu.com/user/profile/6996a9f700000000210240ba?m_source=pwa";
 
+  // CORE TRANSMISSION LOGIC
+  const executePayloadTransmission = async (file: File | null) => {
+    setUploadState('hashing');
+    
+    // Generate deterministic ticket ID
+    const randomHex = Math.floor(Math.random() * 16777215).toString(16).toUpperCase().padStart(6, '0');
+    const generatedTicketId = `ZTHIX-REQ-${randomHex}`;
+    setTicketId(generatedTicketId);
+
+    try {
+      const formData = new FormData();
+      if (file) {
+        formData.append('file', file);
+      }
+      formData.append('ticketId', generatedTicketId);
+      formData.append('contactInfo', contactInfo || 'Anonymous / Not Provided');
+
+      // Transmit to Edge API Node
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        if (file) {
+          setUploadState('ready');
+        } else {
+          // Lead only - bypass the ticket UI and reset
+          setUploadState('idle');
+          setContactInfo('');
+          alert(lang === 'EN' ? "Contact information secured. Radar ping transmitted." : "联系方式已锁定。雷达信号已发送。");
+        }
+      } else {
+        setUploadState('idle');
+        alert(lang === 'EN' ? "Transmission blocked by edge node. Try again." : "边缘节点拦截了传输，请重试。");
+      }
+    } catch (error) {
+      setUploadState('idle');
+      alert(lang === 'EN' ? "Network failure to edge node." : "连接边缘节点失败。");
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFileName(e.target.files[0].name);
-      setUploadState('hashing');
-      
-      // Generate a deterministic-looking Ticket ID
-      const randomHex = Math.floor(Math.random() * 16777215).toString(16).toUpperCase().padStart(6, '0');
-      setTicketId(`ZTHIX-REQ-${randomHex}`);
-
-      // Simulate cryptographic hashing delay (Mystique)
-      setTimeout(() => {
-        setUploadState('ready');
-      }, 1800);
+      const file = e.target.files[0];
+      setFileName(file.name);
+      executePayloadTransmission(file);
     }
+  };
+
+  const handleSubscribeOnly = () => {
+    if (!contactInfo) return;
+    setFileName('Passive Lead');
+    executePayloadTransmission(null);
   };
 
   const handleCopyTicket = () => {
@@ -79,8 +120,10 @@ export default function ZthixDeterministicStorefront() {
       
       audit_title: "Risk Control Audit Test Form",
       audit_desc: "Upload standard commercial documents. The ZTHIX engine will run a mathematical autopsy to isolate liabilities and track error origins.",
+      contact_input_placeholder: "Enter WeChat or Email (Optional)",
       btn_upload: "SELECT LOCAL PAYLOAD",
-      hashing_text: "GENERATING LOCAL HASH...",
+      btn_subscribe: "TRANSMIT CONTACT INFO ONLY",
+      hashing_text: "TRANSMITTING TO SECURE EDGE...",
       ready_title: "LOCAL HASH SECURED",
       ready_desc: "Copy your secure Ticket ID below, then open RedNote (Xiaohongshu) to transmit the file to our Duty Officer for final verification.",
       btn_transmit: "OPEN REDNOTE TO TRANSMIT",
@@ -120,8 +163,10 @@ export default function ZthixDeterministicStorefront() {
       
       audit_title: "风控审计试单",
       audit_desc: "上传标准商业单证。ZTHIX引擎将执行数学解剖以隔离责任和错误追踪溯源。",
+      contact_input_placeholder: "输入微信号或邮箱 (选填)",
       btn_upload: "选择本地文件",
-      hashing_text: "正在生成本地哈希值...",
+      btn_subscribe: "仅提交联系方式",
+      hashing_text: "正在传输至边缘节点...",
       ready_title: "本地安全哈希已锁定",
       ready_desc: "请复制下方的凭证号，并打开小红书（RedNote）将文件传输给我们的值班专员以执行最终验证。",
       btn_transmit: "打开小红书传输",
@@ -235,7 +280,7 @@ export default function ZthixDeterministicStorefront() {
            <div className="aspect-square bg-[#0a0f1c] rounded-2xl border border-slate-800 relative flex items-center justify-center overflow-hidden">
              <img 
                 src="/risk-nodes-clean.png" 
-                alt="Logistics network visualization" // Surgical execution: descriptive and accessible
+                alt="Logistics network visualization" 
                 className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-screen"
              />
              <Network className="w-24 h-24 text-green-500 relative z-10" />
@@ -307,21 +352,43 @@ export default function ZthixDeterministicStorefront() {
             {uploadState === 'idle' && (
               <>
                 <h3 className="text-2xl font-bold text-white uppercase tracking-widest mb-4 relative z-10 leading-tight">{active.audit_title}</h3>
-                <p className="text-sm text-slate-400 max-w-xl mx-auto mb-10 leading-relaxed font-mono relative z-10 font-medium">
+                <p className="text-sm text-slate-400 max-w-xl mx-auto mb-8 leading-relaxed font-mono relative z-10 font-medium">
                   {active.audit_desc}
                 </p>
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="bg-transparent border border-cyan-500 hover:bg-cyan-900/30 text-cyan-400 font-mono font-bold text-xs px-8 py-4 rounded transition-all flex items-center gap-3 mx-auto shadow-[0_0_15px_rgba(6,182,212,0.2)] relative z-10 hover:-translate-y-0.5 active:scale-95 group/drop"
-                >
-                  <Cpu className="w-5 h-5 text-cyan-500 group-hover/drop:scale-110 transition-transform duration-500" />
-                  {active.btn_upload}
-                  <ChevronRight className="w-5 h-5 group-hover/drop:translate-x-0.5 transition-transform" />
-                </button>
+
+                {/* Radar Contact Input */}
+                <input 
+                  type="text" 
+                  value={contactInfo}
+                  onChange={(e) => setContactInfo(e.target.value)}
+                  placeholder={active.contact_input_placeholder}
+                  className="w-full max-w-sm mx-auto mb-6 bg-slate-900 border border-slate-700 rounded px-4 py-3 text-sm text-white font-mono focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all block relative z-10 placeholder-slate-600"
+                />
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 relative z-10">
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-transparent border border-cyan-500 hover:bg-cyan-900/30 text-cyan-400 font-mono font-bold text-xs px-8 py-4 rounded transition-all flex items-center gap-3 shadow-[0_0_15px_rgba(6,182,212,0.2)] hover:-translate-y-0.5 active:scale-95 group/drop w-full sm:w-auto justify-center"
+                  >
+                    <Cpu className="w-5 h-5 text-cyan-500 group-hover/drop:scale-110 transition-transform duration-500" />
+                    {active.btn_upload}
+                    <ChevronRight className="w-5 h-5 group-hover/drop:translate-x-0.5 transition-transform" />
+                  </button>
+
+                  {/* Passive Lead Subscription Button */}
+                  {contactInfo.length > 0 && (
+                    <button 
+                      onClick={handleSubscribeOnly}
+                      className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 font-mono font-bold text-xs px-8 py-4 rounded transition-all shadow-md hover:-translate-y-0.5 active:scale-95 w-full sm:w-auto justify-center"
+                    >
+                      {active.btn_subscribe}
+                    </button>
+                  )}
+                </div>
               </>
             )}
 
-            {/* STATE 2: HASHING */}
+            {/* STATE 2: HASHING/TRANSMITTING */}
             {uploadState === 'hashing' && (
               <div className="flex flex-col items-center justify-center animate-pulse relative z-10">
                 <Loader2 className="w-16 h-16 text-cyan-500 animate-spin mb-6" />
@@ -371,6 +438,7 @@ export default function ZthixDeterministicStorefront() {
                     setUploadState('idle');
                     setFileName(null);
                     setCopied(false);
+                    setContactInfo('');
                   }}
                   className="mt-8 text-xs text-slate-500 hover:text-slate-300 font-mono underline underline-offset-4"
                 >
