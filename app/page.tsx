@@ -139,15 +139,15 @@ export default function ZthixDeterministicStorefront() {
       
       audit_title: "Risk Control Audit Test Form",
       audit_desc: "Upload standard commercial documents. The ZTHIX engine will run a mathematical autopsy to isolate liabilities and track error origins.",
-      contact_input_placeholder: "Enter WeChat or Email (Optional)",
+      contact_input_placeholder: "Enter WeChat or Email",
       btn_upload: "SELECT LOCAL PAYLOAD",
       btn_subscribe: "TRANSMIT CONTACT INFO ONLY",
       btn_subscribe_success: "TRANSMITTED",
       packing_text: "CONSOLIDATING CARGO...",
       hashing_text: "TRANSMITTING TO SECURE EDGE...",
-      ready_title: "LOCAL HASH SECURED",
-      ready_desc: "Copy your secure Ticket ID below, then open RedNote (Xiaohongshu) to transmit the file to our Duty Officer for final verification.",
-      btn_transmit: "OPEN REDNOTE TO TRANSMIT",
+      ready_title: "LOCAL SECURE TICKET ID SECURED",
+      ready_desc: "Copy your secure Ticket ID below; it is the only proof of your Zthix trial order result. Zthix staff will reply to you with the result within 12 hours. You can also contact the on-duty specialist directly on RedNote.",
+      btn_transmit: "OPEN REDNOTE TO CONMMUNICATION",
       copy_btn: "COPY TICKET",
       copied_btn: "COPIED!",
       
@@ -185,15 +185,15 @@ export default function ZthixDeterministicStorefront() {
       
       audit_title: "风控审计试单",
       audit_desc: "上传标准商业单证。ZTHIX引擎将执行数学解剖以隔离责任和错误追踪溯源。",
-      contact_input_placeholder: "输入微信号或邮箱 (选填)",
+      contact_input_placeholder: "输入微信号或邮箱",
       btn_upload: "选择本地文件",
       btn_subscribe: "仅提交联系方式",
       btn_subscribe_success: "已传输",
       packing_text: "正在打包多个文件...",
       hashing_text: "正在传输至边缘节点...",
-      ready_title: "本地安全哈希已锁定",
-      ready_desc: "请复制下方的凭证号，并打开小红书（RedNote）将文件传输给我们的值班专员以执行最终验证。",
-      btn_transmit: "打开小红书传输",
+      ready_title: "本地安全凭证号已经生成",
+      ready_desc: "请复制下方的凭证号，它是您获取zthix试单结果的唯一凭证。zthix工作人员将在12小时内回复您试单结果。您也可以直接在小红书上与值班专员联系。",
+      btn_transmit: "小红书交流",
       copy_btn: "复制凭证号",
       copied_btn: "已复制!",
       
@@ -474,7 +474,7 @@ export default function ZthixDeterministicStorefront() {
                   }}
                   className="mt-8 text-xs text-slate-500 hover:text-slate-300 font-mono underline underline-offset-4"
                 >
-                  {lang === 'EN' ? 'Cancel & Select New File' : '取消并选择新文件'}
+                  {lang === 'EN' ? 'Continue Uploading New File' : '继续上传新文件'}
                 </button>
               </div>
             )}
