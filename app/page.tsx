@@ -27,7 +27,8 @@ export default function ZthixDeterministicStorefront() {
   const [uploadState, setUploadState] = useState<'idle' | 'hashing' | 'ready'>('idle');
   const [ticketId, setTicketId] = useState<string>('');
   const [copied, setCopied] = useState(false);
-  const [contactInfo, setContactInfo] = useState<string>(''); // New State for Radar Lead
+  const [contactInfo, setContactInfo] = useState<string>(''); 
+  const [leadStatus, setLeadStatus] = useState<'idle' | 'success'>('idle'); // Silent state manager
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const xhsProfileUrl = "https://www.xiaohongshu.com/user/profile/6996a9f700000000210240ba?m_source=pwa";
@@ -59,18 +60,23 @@ export default function ZthixDeterministicStorefront() {
         if (file) {
           setUploadState('ready');
         } else {
-          // Lead only - bypass the ticket UI and reset
+          // Silent Lead Success
           setUploadState('idle');
-          setContactInfo('');
-          alert(lang === 'EN' ? "Contact information secured. Radar ping transmitted." : "联系方式已锁定。雷达信号已发送。");
+          setLeadStatus('success');
+          setTimeout(() => {
+            setLeadStatus('idle');
+            setContactInfo('');
+          }, 2000);
         }
       } else {
+        // Silent Failure State
         setUploadState('idle');
-        alert(lang === 'EN' ? "Transmission blocked by edge node. Try again." : "边缘节点拦截了传输，请重试。");
+        setLeadStatus('idle');
       }
     } catch (error) {
+      // Silent Failure State
       setUploadState('idle');
-      alert(lang === 'EN' ? "Network failure to edge node." : "连接边缘节点失败。");
+      setLeadStatus('idle');
     }
   };
 
@@ -83,7 +89,7 @@ export default function ZthixDeterministicStorefront() {
   };
 
   const handleSubscribeOnly = () => {
-    if (!contactInfo) return;
+    if (!contactInfo || leadStatus === 'success') return;
     setFileName('Passive Lead');
     executePayloadTransmission(null);
   };
@@ -123,6 +129,7 @@ export default function ZthixDeterministicStorefront() {
       contact_input_placeholder: "Enter WeChat or Email (Optional)",
       btn_upload: "SELECT LOCAL PAYLOAD",
       btn_subscribe: "TRANSMIT CONTACT INFO ONLY",
+      btn_subscribe_success: "TRANSMITTED",
       hashing_text: "TRANSMITTING TO SECURE EDGE...",
       ready_title: "LOCAL HASH SECURED",
       ready_desc: "Copy your secure Ticket ID below, then open RedNote (Xiaohongshu) to transmit the file to our Duty Officer for final verification.",
@@ -166,6 +173,7 @@ export default function ZthixDeterministicStorefront() {
       contact_input_placeholder: "输入微信号或邮箱 (选填)",
       btn_upload: "选择本地文件",
       btn_subscribe: "仅提交联系方式",
+      btn_subscribe_success: "已传输",
       hashing_text: "正在传输至边缘节点...",
       ready_title: "本地安全哈希已锁定",
       ready_desc: "请复制下方的凭证号，并打开小红书（RedNote）将文件传输给我们的值班专员以执行最终验证。",
@@ -379,9 +387,10 @@ export default function ZthixDeterministicStorefront() {
                   {contactInfo.length > 0 && (
                     <button 
                       onClick={handleSubscribeOnly}
-                      className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 font-mono font-bold text-xs px-8 py-4 rounded transition-all shadow-md hover:-translate-y-0.5 active:scale-95 w-full sm:w-auto justify-center"
+                      className={`${leadStatus === 'success' ? 'bg-green-600/20 text-green-400 border-green-500' : 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300'} border font-mono font-bold text-xs px-8 py-4 rounded transition-all shadow-md hover:-translate-y-0.5 active:scale-95 w-full sm:w-auto justify-center flex items-center gap-2`}
                     >
-                      {active.btn_subscribe}
+                      {leadStatus === 'success' && <CheckCircle2 className="w-4 h-4" />}
+                      {leadStatus === 'success' ? active.btn_subscribe_success : active.btn_subscribe}
                     </button>
                   )}
                 </div>
