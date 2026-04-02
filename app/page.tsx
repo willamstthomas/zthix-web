@@ -154,8 +154,8 @@ export default function ZthixDeterministicStorefront() {
       contact_title: "OPERATIONAL CENTER",
       contact_links: [
         { label: "EMAIL: INFO@ZTHIX.COM", url: "mailto:info@zthix.com" },
-        { label: "REDNOTE: ZTHIX-WILL", url: xhsProfileUrl },
-        { label: "WHATSAPP: ZTHIX-WILL", url: "https://wa.me/8613611052816" }
+        { label: "REDNOTE: ZTHIX-Will", url: xhsProfileUrl },
+        { label: "WHATSAPP: ZTHIX-Will", url: "https://wa.me/8613611052816" }
       ],
       footer_loc: "Location: Zhanjiang Port, Guangdong",
       footer_legal: "ZTHIX Mathematical Verification Protocol. EU Data Standards Compliant."
@@ -199,9 +199,9 @@ export default function ZthixDeterministicStorefront() {
       
       contact_title: "运营中心",
       contact_links: [
-        { label: "EMAIL: INFO@ZTHIX.COM", url: "mailto:info@zthix.com" },
-        { label: "REDNOTE: ZTHIX-WILL", url: xhsProfileUrl },
-        { label: "WHATSAPP: ZTHIX-WILL", url: "https://wa.me/8613611052816" }
+        { label: "EMAIL: info@zthix.com", url: "mailto:info@zthix.com" },
+        { label: "REDNOTE: ZTHIX-Will", url: xhsProfileUrl },
+        { label: "WHATSAPP: ZTHIX-Will", url: "https://wa.me/8613611052816" }
       ],
       footer_loc: "坐标：广东 · 湛江港",
       footer_legal: "ZTHIX 数学验证协议。符合欧盟数据标准。"
@@ -487,7 +487,7 @@ export default function ZthixDeterministicStorefront() {
                 className="text-slate-400 hover:text-white transition-colors flex items-center justify-center md:justify-start gap-2 relative z-10 font-bold uppercase tracking-widest group cursor-pointer text-left"
                 title="Click to copy email address"
               >
-                EMAIL: INFO@ZTHIX.COM <Copy className="w-3.5 h-3.5 relative z-10 group-active:scale-90 transition-transform" />
+                EMAIL: info@zthix.com <Copy className="w-3.5 h-3.5 relative z-10 group-active:scale-90 transition-transform" />
               </button>
               
               {/* Filter out the old email link, render the rest (RedNote/WhatsApp) with ExternalLink arrow */}
