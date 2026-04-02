@@ -4,16 +4,17 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
-    const file = formData.get('file') as File | null;
+    // 1. Capture ALL files, not just the first one
+    const files = formData.getAll('files') as File[];
     const ticketId = formData.get('ticketId') as string || 'NO-TICKET';
     const contactInfo = formData.get('contactInfo') as string || 'Anonymous / Not Provided';
 
-    // 1. Guardrail: If the payload is completely empty, reject it.
-    if ((!file || file.size === 0) && (!contactInfo || contactInfo === 'Anonymous / Not Provided')) {
+    // 2. Guardrail for empty payloads
+    if (files.length === 0 && (!contactInfo || contactInfo === 'Anonymous / Not Provided')) {
       return NextResponse.json({ error: 'Empty payload. Provide a file or contact info.' }, { status: 400 });
     }
 
-    // 2. Generate Deterministic Timestamp (YYYYMMDD HH:MM)
+    // 3. Generate Deterministic Timestamp
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -22,22 +23,33 @@ export async function POST(request: Request) {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const timestamp = `${year}${month}${day} ${hours}:${minutes}`;
 
-    let blobUrl = null;
-    let secureFilename = 'None';
     let message = `🚨 ZTHIX RADAR PING 🚨\n\n🕒 Time: ${timestamp}\n👤 Contact: ${contactInfo}\n`;
+    let uploadSuccessCount = 0;
 
-    // 3. Conditional Storage Logic
-    if (file && file.size > 0) {
-      secureFilename = `${timestamp} ${ticketId} - ${file.name}`;
-      const blob = await put(secureFilename, file, { access: 'public' });
-      blobUrl = blob.url;
+    // 4. Sequential Multi-File Upload Loop
+    if (files.length > 0) {
+      message += `🎫 Ticket: ${ticketId}\n📦 Payload Count: ${files.length} file(s)\n\n`;
       
-      message += `🎫 Ticket: ${ticketId}\n📁 File: ${secureFilename}\n\n[⬇️ SECURE DOWNLOAD LINK](${blobUrl})`;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 0) {
+          const secureFilename = `${timestamp} ${ticketId} - ${file.name}`;
+          
+          // Force 'attachment' to prevent browser inline expansion (forces download to Mac)
+          const blob = await put(secureFilename, file, { 
+            access: 'public',
+            contentDisposition: `attachment; filename="${secureFilename}"`
+          });
+          
+          message += `📄 File ${i + 1}: ${secureFilename}\n[⬇️ FORCE DOWNLOAD LINK](${blob.url})\n\n`;
+          uploadSuccessCount++;
+        }
+      }
     } else {
       message += `\n⚠️ STATUS: Passive Lead / Subscription. No payload attached.`;
     }
 
-    // 4. Transmit Radar Ping to Telegram
+    // 5. Transmit Radar Ping to Telegram
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
     
@@ -53,7 +65,7 @@ export async function POST(request: Request) {
       })
     });
 
-    return NextResponse.json({ success: true, url: blobUrl, message: 'Transmission logged.' });
+    return NextResponse.json({ success: true, count: uploadSuccessCount, message: 'Transmission logged.' });
   } catch (error) {
     console.error('API Error:', error);
     return NextResponse.json({ error: 'Transmission failed at the edge node.' }, { status: 500 });
