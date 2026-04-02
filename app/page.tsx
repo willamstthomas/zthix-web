@@ -28,39 +28,38 @@ export default function ZthixDeterministicStorefront() {
   const [ticketId, setTicketId] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [contactInfo, setContactInfo] = useState<string>(''); 
-  const [leadStatus, setLeadStatus] = useState<'idle' | 'success'>('idle'); // Silent state manager
+  const [leadStatus, setLeadStatus] = useState<'idle' | 'success'>('idle'); 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const xhsProfileUrl = "https://www.xiaohongshu.com/user/profile/6996a9f700000000210240ba?m_source=pwa";
 
-  // CORE TRANSMISSION LOGIC
-  const executePayloadTransmission = async (file: File | null) => {
+  // CORE TRANSMISSION LOGIC (Multi-File Array)
+  const executePayloadTransmission = async (files: File[]) => {
     setUploadState('hashing');
     
-    // Generate deterministic ticket ID
     const randomHex = Math.floor(Math.random() * 16777215).toString(16).toUpperCase().padStart(6, '0');
     const generatedTicketId = `ZTHIX-REQ-${randomHex}`;
     setTicketId(generatedTicketId);
 
     try {
       const formData = new FormData();
-      if (file) {
-        formData.append('file', file);
+      if (files && files.length > 0) {
+        files.forEach(file => {
+          formData.append('files', file);
+        });
       }
       formData.append('ticketId', generatedTicketId);
       formData.append('contactInfo', contactInfo || 'Anonymous / Not Provided');
 
-      // Transmit to Edge API Node
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
 
       if (response.ok) {
-        if (file) {
+        if (files.length > 0) {
           setUploadState('ready');
         } else {
-          // Silent Lead Success
           setUploadState('idle');
           setLeadStatus('success');
           setTimeout(() => {
@@ -69,12 +68,10 @@ export default function ZthixDeterministicStorefront() {
           }, 2000);
         }
       } else {
-        // Silent Failure State
         setUploadState('idle');
         setLeadStatus('idle');
       }
     } catch (error) {
-      // Silent Failure State
       setUploadState('idle');
       setLeadStatus('idle');
     }
@@ -82,16 +79,20 @@ export default function ZthixDeterministicStorefront() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setFileName(file.name);
-      executePayloadTransmission(file);
+      const fileArray = Array.from(e.target.files);
+      if (fileArray.length === 1) {
+        setFileName(fileArray[0].name);
+      } else {
+        setFileName(`${fileArray.length} files selected / 已选择 ${fileArray.length} 个文件`);
+      }
+      executePayloadTransmission(fileArray);
     }
   };
 
   const handleSubscribeOnly = () => {
     if (!contactInfo || leadStatus === 'success') return;
     setFileName('Passive Lead');
-    executePayloadTransmission(null);
+    executePayloadTransmission([]);
   };
 
   const handleCopyTicket = () => {
@@ -139,8 +140,9 @@ export default function ZthixDeterministicStorefront() {
       
       contact_title: "OPERATIONAL CENTER",
       contact_links: [
-        { label: "RedNote: ZTHIX-Will", url: xhsProfileUrl },
-        { label: "WhatsApp: ZTHIX-Will", url: "https://wa.me/8613611052816" }
+        { label: "EMAIL: info@zthix.com", url: "mailto:info@zthix.com" },
+        { label: "REDNOTE: ZTHIX-WILL", url: xhsProfileUrl },
+        { label: "WHATSAPP: ZTHIX-WILL", url: "https://wa.me/8613611052816" }
       ],
       footer_loc: "Location: Zhanjiang Port, Guangdong",
       footer_legal: "ZTHIX Mathematical Verification Protocol. EU Data Standards Compliant."
@@ -183,8 +185,9 @@ export default function ZthixDeterministicStorefront() {
       
       contact_title: "运营中心",
       contact_links: [
-        { label: "小红书: 跨境风控-Will", url: xhsProfileUrl },
-        { label: "WhatsApp: ZTHIX-Will", url: "https://wa.me/8613611052816" }
+        { label: "EMAIL: info@zthix.com", url: "mailto:info@zthix.com" },
+        { label: "REDNOTE: ZTHIX-WILL", url: xhsProfileUrl },
+        { label: "WHATSAPP: ZTHIX-WILL", url: "https://wa.me/8613611052816" }
       ],
       footer_loc: "坐标：广东 · 湛江港",
       footer_legal: "ZTHIX 数学验证协议。符合欧盟数据标准。"
@@ -349,10 +352,12 @@ export default function ZthixDeterministicStorefront() {
             {/* Ambient Background Pattern */}
             <div className="absolute inset-0 opacity-10 mix-blend-screen pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, #06b6d4 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
             
+            {/* IMPORTANT: Added "multiple" attribute here to allow selecting multiple files */}
             <input 
               type="file" 
               ref={fileInputRef} 
               className="hidden" 
+              multiple 
               onChange={handleFileChange}
             />
 
