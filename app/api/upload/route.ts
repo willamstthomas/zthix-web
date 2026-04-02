@@ -25,13 +25,13 @@ export async function POST(request: Request) {
     if (file && file.size > 0) {
       const secureFilename = `${timestamp} ${ticketId} - ${file.name}`;
       
-      // Force 'attachment' to prevent browser inline preview (forces hard download)
+      // Clean, compliant storage injection
       const blob = await put(secureFilename, file, { 
-        access: 'public',
-        contentDisposition: `attachment; filename="${secureFilename}"`
+        access: 'public'
       });
       
-      message += `🎫 Ticket: ${ticketId}\n📁 Payload: ${file.name}\n\n[⬇️ SECURE DOWNLOAD LINK](${blob.url})`;
+      // Appending ?download=1 to force the hard download to your Mac
+      message += `🎫 Ticket: ${ticketId}\n📁 Payload: ${file.name}\n\n[⬇️ SECURE DOWNLOAD LINK](${blob.url}?download=1)`;
     } else {
       message += `\n⚠️ STATUS: Passive Lead. No payload attached.`;
     }
