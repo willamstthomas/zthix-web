@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
+import JSZip from 'jszip';
 import { 
   Shield, 
   Database, 
@@ -24,7 +25,7 @@ export default function ZthixDeterministicStorefront() {
   
   // UPLOAD WORKFLOW STATES
   const [fileName, setFileName] = useState<string | null>(null);
-  const [uploadState, setUploadState] = useState<'idle' | 'hashing' | 'ready'>('idle');
+  const [uploadState, setUploadState] = useState<'idle' | 'packing' | 'hashing' | 'ready'>('idle');
   const [ticketId, setTicketId] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [contactInfo, setContactInfo] = useState<string>(''); 
@@ -33,21 +34,32 @@ export default function ZthixDeterministicStorefront() {
 
   const xhsProfileUrl = "https://www.xiaohongshu.com/user/profile/6996a9f700000000210240ba?m_source=pwa";
 
-  // CORE TRANSMISSION LOGIC (Multi-File Array)
+  // CORE TRANSMISSION LOGIC (Client-Side Palletization)
   const executePayloadTransmission = async (files: File[]) => {
-    setUploadState('hashing');
-    
     const randomHex = Math.floor(Math.random() * 16777215).toString(16).toUpperCase().padStart(6, '0');
     const generatedTicketId = `ZTHIX-REQ-${randomHex}`;
     setTicketId(generatedTicketId);
 
     try {
       const formData = new FormData();
+      
       if (files && files.length > 0) {
-        files.forEach(file => {
-          formData.append('files', file);
-        });
+        if (files.length === 1) {
+          // Single file bypasses zip
+          setUploadState('hashing');
+          formData.append('file', files[0]);
+        } else {
+          // Multiple files get packed into a ZIP pallet
+          setUploadState('packing');
+          const zip = new JSZip();
+          files.forEach(f => zip.file(f.name, f));
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          const zipFile = new File([zipBlob], `${generatedTicketId}-Consolidated.zip`, { type: 'application/zip' });
+          formData.append('file', zipFile);
+          setUploadState('hashing');
+        }
       }
+
       formData.append('ticketId', generatedTicketId);
       formData.append('contactInfo', contactInfo || 'Anonymous / Not Provided');
 
@@ -131,6 +143,7 @@ export default function ZthixDeterministicStorefront() {
       btn_upload: "SELECT LOCAL PAYLOAD",
       btn_subscribe: "TRANSMIT CONTACT INFO ONLY",
       btn_subscribe_success: "TRANSMITTED",
+      packing_text: "CONSOLIDATING CARGO...",
       hashing_text: "TRANSMITTING TO SECURE EDGE...",
       ready_title: "LOCAL HASH SECURED",
       ready_desc: "Copy your secure Ticket ID below, then open RedNote (Xiaohongshu) to transmit the file to our Duty Officer for final verification.",
@@ -140,7 +153,7 @@ export default function ZthixDeterministicStorefront() {
       
       contact_title: "OPERATIONAL CENTER",
       contact_links: [
-        { label: "EMAIL: info@zthix.com", url: "mailto:info@zthix.com" },
+        { label: "EMAIL: INFO@ZTHIX.COM", url: "mailto:info@zthix.com" },
         { label: "REDNOTE: ZTHIX-WILL", url: xhsProfileUrl },
         { label: "WHATSAPP: ZTHIX-WILL", url: "https://wa.me/8613611052816" }
       ],
@@ -176,6 +189,7 @@ export default function ZthixDeterministicStorefront() {
       btn_upload: "选择本地文件",
       btn_subscribe: "仅提交联系方式",
       btn_subscribe_success: "已传输",
+      packing_text: "正在打包多个文件...",
       hashing_text: "正在传输至边缘节点...",
       ready_title: "本地安全哈希已锁定",
       ready_desc: "请复制下方的凭证号，并打开小红书（RedNote）将文件传输给我们的值班专员以执行最终验证。",
@@ -185,7 +199,7 @@ export default function ZthixDeterministicStorefront() {
       
       contact_title: "运营中心",
       contact_links: [
-        { label: "EMAIL: info@zthix.com", url: "mailto:info@zthix.com" },
+        { label: "EMAIL: INFO@ZTHIX.COM", url: "mailto:info@zthix.com" },
         { label: "REDNOTE: ZTHIX-WILL", url: xhsProfileUrl },
         { label: "WHATSAPP: ZTHIX-WILL", url: "https://wa.me/8613611052816" }
       ],
@@ -349,10 +363,8 @@ export default function ZthixDeterministicStorefront() {
         <div className="max-w-4xl mx-auto px-6 relative z-10">
           <div className="border border-slate-800 bg-[#060A14] rounded-lg overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.05)] relative z-10 p-10 md:p-16 text-center min-h-[400px] flex flex-col justify-center">
             
-            {/* Ambient Background Pattern */}
             <div className="absolute inset-0 opacity-10 mix-blend-screen pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, #06b6d4 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
             
-            {/* IMPORTANT: Added "multiple" attribute here to allow selecting multiple files */}
             <input 
               type="file" 
               ref={fileInputRef} 
@@ -369,7 +381,6 @@ export default function ZthixDeterministicStorefront() {
                   {active.audit_desc}
                 </p>
 
-                {/* Radar Contact Input */}
                 <input 
                   type="text" 
                   value={contactInfo}
@@ -388,7 +399,6 @@ export default function ZthixDeterministicStorefront() {
                     <ChevronRight className="w-5 h-5 group-hover/drop:translate-x-0.5 transition-transform" />
                   </button>
 
-                  {/* Passive Lead Subscription Button */}
                   {contactInfo.length > 0 && (
                     <button 
                       onClick={handleSubscribeOnly}
@@ -402,7 +412,16 @@ export default function ZthixDeterministicStorefront() {
               </>
             )}
 
-            {/* STATE 2: HASHING/TRANSMITTING */}
+            {/* STATE 2: PACKING */}
+            {uploadState === 'packing' && (
+              <div className="flex flex-col items-center justify-center animate-pulse relative z-10">
+                <Loader2 className="w-16 h-16 text-cyan-500 animate-spin mb-6" />
+                <h3 className="text-xl font-bold text-cyan-400 font-mono tracking-widest">{active.packing_text}</h3>
+                <p className="text-xs text-slate-500 font-mono mt-4">Target Payload: {fileName}</p>
+              </div>
+            )}
+
+            {/* STATE 3: HASHING/TRANSMITTING */}
             {uploadState === 'hashing' && (
               <div className="flex flex-col items-center justify-center animate-pulse relative z-10">
                 <Loader2 className="w-16 h-16 text-cyan-500 animate-spin mb-6" />
@@ -411,7 +430,7 @@ export default function ZthixDeterministicStorefront() {
               </div>
             )}
 
-            {/* STATE 3: READY FOR HANDOFF */}
+            {/* STATE 4: READY FOR HANDOFF */}
             {uploadState === 'ready' && (
               <div className="relative z-10 flex flex-col items-center animate-[fadeIn_0.5s_ease-out]">
                 <div className="w-16 h-16 bg-green-500/10 border border-green-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(34,197,94,0.2)]">
@@ -423,7 +442,6 @@ export default function ZthixDeterministicStorefront() {
                   {active.ready_desc}
                 </p>
 
-                {/* Secure Ticket ID & Copy Button */}
                 <div className="bg-slate-900 border border-slate-700 rounded-lg p-1 mb-8 flex items-center shadow-inner w-full max-w-sm">
                   <div className="px-4 py-3 flex-1 text-center">
                     <span className="text-xl font-mono font-bold text-cyan-400 tracking-[0.2em]">{ticketId}</span>
