@@ -4,56 +4,81 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const { adminPasscode } = await request.json();
-
-    // Absolute perimeter defense. 
+    
+    // Perimeter Defense
     if (adminPasscode !== 'ZTHIX-OMEGA-999') {
-      return NextResponse.json({ error: 'Unauthorized access. Intrusion logged.' }, { status: 403 });
+      return NextResponse.json({ error: 'Root access denied.' }, { status: 403 });
     }
 
     if (!process.env.DATABASE_URL) {
-      throw new Error('DATABASE_URL environment variable is severed.');
+      throw new Error('DATABASE_URL environment variable severed.');
     }
-
+    
     const sql = neon(process.env.DATABASE_URL);
 
-    // STEP 0: HEAL THE TARIFF BOOK
-    // Aligns the legacy SQL script strings with the exact telemetry emitted by the Next.js API.
-    await sql`UPDATE uesa_tariff_book SET trigger_action = 'OPSCORE_UPLOAD_SUCCESS' WHERE trigger_action = 'OPSCORE_DOCUMENT_CLEARED'`;
-    await sql`UPDATE uesa_tariff_book SET trigger_action = 'RECON_UPLOAD_SUCCESS' WHERE trigger_action = 'RECON_AUDIT_CLEAN'`;
-
-    // STEP 1: SWEEP REVENUE TO CLIENT LEDGER (M)
-    // Bills the SEI for the ingestion of the payload.
-    await sql`
-      INSERT INTO uesa_client_ledger (client_id, event_id, project_type, billed_usd, billing_period)
-      SELECT e.actor_id, e.event_id, e.project_type, t.rate_usd, to_char(CURRENT_TIMESTAMP, 'YYYY-MM')
-      FROM uesa_event_log e
-      JOIN uesa_tariff_book t ON e.action = t.trigger_action AND e.project_type = t.target_project
-      WHERE e.financial_status = 'PENDING_RATING' 
-      AND (e.action = 'OPSCORE_UPLOAD_SUCCESS' OR e.action = 'RECON_UPLOAD_SUCCESS')
+    // 1. ISOLATE UNRATED LABOR: Find all events the clerks just finished.
+    const unratedEvents = await sql`
+      SELECT id, actor_id as clerk_id, resource_id, project_type 
+      FROM uesa_event_log 
+      WHERE action LIKE 'HUMAN_RESOLUTION_%' 
+      AND (financial_status = 'UNRATED' OR financial_status IS NULL)
     `;
 
-    // STEP 2: SWEEP PAYROLL TO CLERK LEDGER (H)
-    // Credits the human operator for clearing the ZTHIX-UID.
-    await sql`
-      INSERT INTO uesa_clerk_ledger (clerk_id, event_id, project_type, earned_usd, payroll_period)
-      SELECT e.actor_id, e.event_id, e.project_type, t.rate_usd, to_char(CURRENT_TIMESTAMP, 'YYYY-MM')
-      FROM uesa_event_log e
-      JOIN uesa_tariff_book t ON e.action = t.trigger_action AND e.project_type = t.target_project
-      WHERE e.financial_status = 'PENDING_RATING' 
-      AND e.action LIKE 'HUMAN_RESOLUTION_%'
-    `;
+    if (unratedEvents.length === 0) {
+      return NextResponse.json({ success: true, message: 'SWEEP COMPLETE. NO UNRATED EVENTS FOUND.' });
+    }
 
-    // STEP 3: LOCK THE IMMUTABLE DOSSIER
-    // Seals the events so they can never be swept or billed again.
-    const result = await sql`
-      UPDATE uesa_event_log 
-      SET financial_status = 'RATED' 
-      WHERE financial_status = 'PENDING_RATING'
-    `;
+    let processedVolume = 0;
 
-    return NextResponse.json({ success: true, message: 'UESA Financial Sweep Executed. Ledgers M and H updated.' });
+    for (const ev of unratedEvents) {
+      // 2. THE CRYPTOGRAPHIC JOIN: Match the Clerk's ZTHIX-UID back to the Client's Ingestion Event
+      const ingestionRecord = await sql`
+        SELECT actor_id 
+        FROM uesa_event_log 
+        WHERE resource_id = ${ev.resource_id} 
+        AND action = 'PENDING_RATING' 
+        LIMIT 1
+      `;
+      
+      const targetSei = ingestionRecord.length > 0 ? ingestionRecord[0].actor_id : 'UNKNOWN_SEI';
+
+      // 3. TARIFF EXTRACTION: Query the master pricing matrix
+      const tariffRecord = await sql`
+        SELECT base_rate_usd FROM uesa_tariff_book WHERE project_type = ${ev.project_type} LIMIT 1
+      `;
+      // Fallback matrix if tariff book is empty
+      const rateUsd = tariffRecord.length > 0 ? tariffRecord[0].base_rate_usd : (ev.project_type === 'OPSCORE' ? 0.50 : 2.00);
+
+      // 4. BILL THE CLIENT (LEDGER M)
+      // We explicitly reject anonymous black holes. Only bill valid SEIs.
+      if (targetSei !== 'UNKNOWN_SEI' && targetSei !== 'Anonymous / Not Provided') {
+        await sql`
+          INSERT INTO uesa_client_ledger (client_id, event_id, project_type, billed_usd, status)
+          VALUES (${targetSei}, ${ev.id}, ${ev.project_type}, ${rateUsd}, 'UNPAID')
+        `;
+      }
+
+      // 5. PAY THE CLERK (LEDGER H)
+      await sql`
+        INSERT INTO uesa_clerk_ledger (clerk_id, event_id, project_type, earned_usd)
+        VALUES (${ev.clerk_id}, ${ev.id}, ${ev.project_type}, ${rateUsd})
+      `;
+
+      // 6. SEAL THE EVENT
+      await sql`
+        UPDATE uesa_event_log SET financial_status = 'RATED' WHERE id = ${ev.id}
+      `;
+      
+      processedVolume++;
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: `SWEEP COMPLETE. LEDGERS M & H SYNCHRONIZED. ${processedVolume} EVENTS LOCKED.` 
+    });
+
   } catch (error) {
-    console.error('UESA Sweep Error:', error);
-    return NextResponse.json({ error: 'Sweep failure. Manual audit required.' }, { status: 500 });
+    console.error('UESA Master Sweep Error:', error);
+    return NextResponse.json({ error: 'Fatal error during ledger synchronization.' }, { status: 500 });
   }
 }
