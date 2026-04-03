@@ -16,30 +16,28 @@ export async function GET(request: Request) {
 
     const sql = neon(process.env.DATABASE_URL);
 
-    // Cryptographic Join: Links the Debt (M Ledger) to the Operational Proof (Event Log)
+    // Bulletproof Join: Case-insensitive matching, LEFT JOIN prevents silent row drops
     const rawLedger = await sql`
       SELECT 
         l.invoice_id,
         l.project_type, 
         l.billed_usd, 
-        e.resource_id as zthix_uid,
-        e.timestamp
+        e.resource_id as zthix_uid
       FROM uesa_client_ledger l
-      JOIN uesa_event_log e ON l.event_id = e.event_id
-      WHERE l.client_id = ${sei} AND l.status = 'UNPAID'
-      ORDER BY l.project_type, e.timestamp DESC
+      LEFT JOIN uesa_event_log e ON l.event_id = e.event_id
+      WHERE UPPER(l.client_id) = UPPER(${sei}) AND l.status = 'UNPAID'
+      ORDER BY l.project_type DESC
     `;
 
     if (rawLedger.length === 0) {
       return NextResponse.json({ 
-        sei, 
-        total_usd: 0, 
+        sei: sei.toUpperCase(), 
+        total_usd: "0.00", 
         message: 'NO OUTSTANDING LIABILITY',
         items: [] 
       });
     }
 
-    // Process the raw ledger into a structured financial payload
     let totalUsd = 0;
     const itemizedGroups: Record<string, any> = {};
 
@@ -58,11 +56,14 @@ export async function GET(request: Request) {
 
       itemizedGroups[row.project_type].volume += 1;
       itemizedGroups[row.project_type].subtotal_usd += amount;
-      itemizedGroups[row.project_type].uids.push(row.zthix_uid);
+      
+      if (row.zthix_uid) {
+        itemizedGroups[row.project_type].uids.push(row.zthix_uid);
+      }
     });
 
     return NextResponse.json({
-      sei,
+      sei: sei.toUpperCase(),
       total_usd: totalUsd.toFixed(2),
       items: Object.values(itemizedGroups)
     });
