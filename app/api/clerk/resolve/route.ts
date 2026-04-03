@@ -1,30 +1,23 @@
 import { neon } from '@neondatabase/serverless';
 import { NextResponse } from 'next/server';
 
-// --- THE CORS FIREWALL WHITELIST ---
-// Explicitly authorizes the Factory Floor to inject data into the Accounting Ledger
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://zthix-opscore.vercel.app',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-// --- PREFLIGHT HANDLER ---
-// Browsers send a blank "OPTIONS" ping before the real POST to check security. We must reply 'OK'.
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-// --- THE MASTER RESOLUTION ENGINE ---
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
-    const { clerkId, projectType, outcome, passcode } = payload;
+    const { clerkId, clientId, projectType, outcome, passcode } = payload;
     
-    // BACKWARD COMPATIBILITY: Supports single ticket (Desk) or batch array (Factory)
     const ticketIds: string[] = payload.ticketIds || (payload.ticketId ? [payload.ticketId] : []);
 
-    // Absolute perimeter defense
     if (passcode !== 'ZTHIX-ALPHA-777') {
       return NextResponse.json({ error: 'Unauthorized payload. Intrusion logged.' }, { status: 403, headers: corsHeaders });
     }
@@ -41,8 +34,22 @@ export async function POST(request: Request) {
     const dbAction = `HUMAN_RESOLUTION_${outcome}`;
     const timestamp = new Date().toISOString();
 
-    // BATCH EXECUTION: Loop through the array and lock each UID into the ledger
     for (const tid of ticketIds) {
+      // 1. FORGE THE ANCHOR: Tie the UID to the Client SEI so the Sweep Engine can bill it
+      if (clientId) {
+        await sql`
+          INSERT INTO uesa_event_log (actor_id, action, resource_id, project_type, context_payload)
+          VALUES (
+            ${clientId}, 
+            'PENDING_RATING', 
+            ${tid}, 
+            ${projectType}, 
+            ${JSON.stringify({ origin: 'factory_direct_batch' })}::jsonb
+          )
+        `;
+      }
+
+      // 2. LOCK THE RESOLUTION: Log the clerk's labor
       await sql`
         INSERT INTO uesa_event_log (actor_id, action, resource_id, project_type, context_payload)
         VALUES (
@@ -57,7 +64,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `Batch Resolution Locked. ${ticketIds.length} UIDs secured in Ledger.` 
+      message: `Batch Resolution Locked. ${ticketIds.length} UIDs secured to SEI ${clientId || 'UNKNOWN'}.` 
     }, { headers: corsHeaders });
 
   } catch (error) {
