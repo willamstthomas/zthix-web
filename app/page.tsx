@@ -134,7 +134,7 @@ export default function ZthixDeterministicStorefront() {
       copy_btn: "COPY TICKET",
       copied_btn: "COPIED!",
       opscore_label: "OPSCORE (Document Audit)",
-      recon_label: "RECON (Financial Error Correction)",
+      recon_label: "RECON (Financial Autospy)",
       
       contact_title: "OPERATIONAL CENTER",
       contact_links: [
