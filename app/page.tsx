@@ -17,7 +17,8 @@ import {
   Loader2,
   Send,
   Copy,
-  CheckCircle2
+  CheckCircle2,
+  Briefcase
 } from 'lucide-react';
 
 export default function ZthixDeterministicStorefront() {
@@ -29,7 +30,7 @@ export default function ZthixDeterministicStorefront() {
   const [ticketId, setTicketId] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [contactInfo, setContactInfo] = useState<string>(''); 
-  const [leadStatus, setLeadStatus] = useState<'idle' | 'success'>('idle'); 
+  const [projectType, setProjectType] = useState<'OPSCORE' | 'RECON'>('OPSCORE'); // UESA Intake Valve
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const xhsProfileUrl = "https://www.xiaohongshu.com/user/profile/6996a9f700000000210240ba?m_source=pwa";
@@ -62,6 +63,7 @@ export default function ZthixDeterministicStorefront() {
 
       formData.append('ticketId', generatedTicketId);
       formData.append('contactInfo', contactInfo || 'Anonymous / Not Provided');
+      formData.append('projectType', projectType); // Attach target engine for the Ledger
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -69,23 +71,12 @@ export default function ZthixDeterministicStorefront() {
       });
 
       if (response.ok) {
-        if (files.length > 0) {
-          setUploadState('ready');
-        } else {
-          setUploadState('idle');
-          setLeadStatus('success');
-          setTimeout(() => {
-            setLeadStatus('idle');
-            setContactInfo('');
-          }, 2000);
-        }
+        setUploadState('ready');
       } else {
         setUploadState('idle');
-        setLeadStatus('idle');
       }
     } catch (error) {
       setUploadState('idle');
-      setLeadStatus('idle');
     }
   };
 
@@ -99,12 +90,6 @@ export default function ZthixDeterministicStorefront() {
       }
       executePayloadTransmission(fileArray);
     }
-  };
-
-  const handleSubscribeOnly = () => {
-    if (!contactInfo || leadStatus === 'success') return;
-    setFileName('Passive Lead');
-    executePayloadTransmission([]);
   };
 
   const handleCopyTicket = () => {
@@ -141,15 +126,15 @@ export default function ZthixDeterministicStorefront() {
       audit_desc: "Upload standard commercial documents. The ZTHIX engine will run a mathematical autopsy to isolate liabilities and track error origins.",
       contact_input_placeholder: "Enter WeChat or Email",
       btn_upload: "SELECT LOCAL PAYLOAD",
-      btn_subscribe: "TRANSMIT CONTACT INFO ONLY",
-      btn_subscribe_success: "TRANSMITTED",
       packing_text: "CONSOLIDATING CARGO...",
       hashing_text: "TRANSMITTING TO SECURE EDGE...",
       ready_title: "LOCAL SECURE TICKET ID SECURED",
       ready_desc: "Copy your secure Ticket ID below; it is the only proof of your Zthix trial order result. Zthix staff will reply to you with the result within 12 hours. You can also contact the on-duty specialist directly on RedNote.",
-      btn_transmit: "OPEN REDNOTE TO CONMMUNICATION",
+      btn_transmit: "OPEN REDNOTE TO COMMUNICATION",
       copy_btn: "COPY TICKET",
       copied_btn: "COPIED!",
+      opscore_label: "OPSCORE (Logistics Check)",
+      recon_label: "RECON (Financial Autopsy)",
       
       contact_title: "OPERATIONAL CENTER",
       contact_links: [
@@ -187,8 +172,6 @@ export default function ZthixDeterministicStorefront() {
       audit_desc: "上传标准商业单证。ZTHIX引擎将执行数学解剖以隔离责任和错误追踪溯源。",
       contact_input_placeholder: "输入微信号或邮箱",
       btn_upload: "选择本地文件",
-      btn_subscribe: "仅提交联系方式",
-      btn_subscribe_success: "已传输",
       packing_text: "正在打包多个文件...",
       hashing_text: "正在传输至边缘节点...",
       ready_title: "本地安全凭证号已经生成",
@@ -196,6 +179,8 @@ export default function ZthixDeterministicStorefront() {
       btn_transmit: "小红书交流",
       copy_btn: "复制凭证号",
       copied_btn: "已复制!",
+      opscore_label: "OPSCORE (物流审计)",
+      recon_label: "RECON (财务解剖)",
       
       contact_title: "运营中心",
       contact_links: [
@@ -381,6 +366,32 @@ export default function ZthixDeterministicStorefront() {
                   {active.audit_desc}
                 </p>
 
+                {/* UESA INTAKE VALVE: Opscore vs Recon Selector */}
+                <div className="flex justify-center gap-4 mb-8 relative z-10">
+                  <button
+                    onClick={() => setProjectType('OPSCORE')}
+                    className={`px-6 py-3 rounded text-xs font-bold font-mono tracking-wider transition-all border ${
+                      projectType === 'OPSCORE' 
+                        ? 'bg-cyan-900/40 text-cyan-400 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.3)]' 
+                        : 'bg-slate-900 text-slate-500 border-slate-700 hover:border-slate-600 hover:text-slate-400'
+                    }`}
+                  >
+                    <Shield className="w-4 h-4 inline-block mr-2" />
+                    {active.opscore_label}
+                  </button>
+                  <button
+                    onClick={() => setProjectType('RECON')}
+                    className={`px-6 py-3 rounded text-xs font-bold font-mono tracking-wider transition-all border ${
+                      projectType === 'RECON' 
+                        ? 'bg-purple-900/40 text-purple-400 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
+                        : 'bg-slate-900 text-slate-500 border-slate-700 hover:border-slate-600 hover:text-slate-400'
+                    }`}
+                  >
+                    <Briefcase className="w-4 h-4 inline-block mr-2" />
+                    {active.recon_label}
+                  </button>
+                </div>
+
                 <input 
                   type="text" 
                   value={contactInfo}
@@ -480,7 +491,7 @@ export default function ZthixDeterministicStorefront() {
             <h4 className="text-white font-bold uppercase tracking-widest text-[11px] mb-4 flex items-center justify-center md:justify-start gap-2 relative z-10">
               <Globe2 className="w-4 h-4 text-slate-400 relative z-10" /> {active.contact_title}
             </h4>
-           <div className="flex flex-col gap-3 text-[11px] font-mono text-slate-400 relative z-10 font-bold uppercase tracking-widest">
+            <div className="flex flex-col gap-3 text-[11px] font-mono text-slate-400 relative z-10 font-bold uppercase tracking-widest">
               {/* Native Copy-to-Clipboard Email Row */}
               <button 
                 onClick={() => navigator.clipboard.writeText('info@zthix.com')}
