@@ -16,9 +16,9 @@ export async function POST(request: Request) {
     
     const sql = neon(process.env.DATABASE_URL);
 
-    // 1. ISOLATE UNRATED LABOR: Find all events the clerks just finished.
+    // 1. ISOLATE UNRATED LABOR: Corrected primary key to 'event_id'
     const unratedEvents = await sql`
-      SELECT id, actor_id as clerk_id, resource_id, project_type 
+      SELECT event_id, actor_id as clerk_id, resource_id, project_type 
       FROM uesa_event_log 
       WHERE action LIKE 'HUMAN_RESOLUTION_%' 
       AND (financial_status = 'UNRATED' OR financial_status IS NULL)
@@ -54,19 +54,19 @@ export async function POST(request: Request) {
       if (targetSei !== 'UNKNOWN_SEI' && targetSei !== 'Anonymous / Not Provided') {
         await sql`
           INSERT INTO uesa_client_ledger (client_id, event_id, project_type, billed_usd, status)
-          VALUES (${targetSei}, ${ev.id}, ${ev.project_type}, ${rateUsd}, 'UNPAID')
+          VALUES (${targetSei}, ${ev.event_id}, ${ev.project_type}, ${rateUsd}, 'UNPAID')
         `;
       }
 
       // 5. PAY THE CLERK (LEDGER H)
       await sql`
         INSERT INTO uesa_clerk_ledger (clerk_id, event_id, project_type, earned_usd)
-        VALUES (${ev.clerk_id}, ${ev.id}, ${ev.project_type}, ${rateUsd})
+        VALUES (${ev.clerk_id}, ${ev.event_id}, ${ev.project_type}, ${rateUsd})
       `;
 
-      // 6. SEAL THE EVENT
+      // 6. SEAL THE EVENT: Corrected target to 'event_id'
       await sql`
-        UPDATE uesa_event_log SET financial_status = 'RATED' WHERE id = ${ev.id}
+        UPDATE uesa_event_log SET financial_status = 'RATED' WHERE event_id = ${ev.event_id}
       `;
       
       processedVolume++;
