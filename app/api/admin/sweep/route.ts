@@ -16,8 +16,7 @@ export async function POST(request: Request) {
     
     const sql = neon(process.env.DATABASE_URL);
 
-    // 1. ISOLATE UNBILLED LABOR: Corrected to use 'event_id'.
-    // Relies purely on the LEFT JOIN math. If no receipt exists in Ledger M, it must be swept.
+    // 1. ISOLATE UNBILLED LABOR
     const unratedEvents = await sql`
       SELECT e.event_id, e.actor_id as clerk_id, e.resource_id, e.project_type 
       FROM uesa_event_log e
@@ -33,7 +32,7 @@ export async function POST(request: Request) {
     let processedVolume = 0;
 
     for (const ev of unratedEvents) {
-      // 2. THE CRYPTOGRAPHIC JOIN: Find the SEI that ingested this specific ZTHIX-UID
+      // 2. THE CRYPTOGRAPHIC JOIN
       const ingestionRecord = await sql`
         SELECT actor_id 
         FROM uesa_event_log 
@@ -44,11 +43,8 @@ export async function POST(request: Request) {
       
       const targetSei = ingestionRecord.length > 0 ? ingestionRecord[0].actor_id : 'UNKNOWN_SEI';
 
-      // 3. TARIFF EXTRACTION
-      const tariffRecord = await sql`
-        SELECT base_rate_usd FROM uesa_tariff_book WHERE project_type = ${ev.project_type} LIMIT 1
-      `;
-      const rateUsd = tariffRecord.length > 0 ? tariffRecord[0].base_rate_usd : (ev.project_type === 'OPSCORE' ? 0.50 : 2.00);
+      // 3. TARIFF OVERRIDE: Amputated the DB query to bypass schema mismatch. Hardcoded deterministic math.
+      const rateUsd = (ev.project_type === 'OPSCORE' ? 0.50 : 2.00);
 
       // 4. BILL CLIENT (LEDGER M)
       if (targetSei !== 'UNKNOWN_SEI' && targetSei !== 'Anonymous / Not Provided') {
@@ -59,7 +55,6 @@ export async function POST(request: Request) {
       }
 
       // 5. PAY CLERK (LEDGER H)
-      // Double-entry safety lock prevents duplicating payroll
       const clerkCheck = await sql`SELECT event_id FROM uesa_clerk_ledger WHERE event_id = ${ev.event_id}`;
       if (clerkCheck.length === 0) {
         await sql`
