@@ -133,8 +133,8 @@ export default function ZthixDeterministicStorefront() {
       btn_transmit: "OPEN REDNOTE TO COMMUNICATION",
       copy_btn: "COPY TICKET",
       copied_btn: "COPIED!",
-      opscore_label: "OPSCORE (Logistics Check)",
-      recon_label: "RECON (Financial Autopsy)",
+      opscore_label: "OPSCORE (Document Audit)",
+      recon_label: "RECON (Financial Error Correction)",
       
       contact_title: "OPERATIONAL CENTER",
       contact_links: [
@@ -179,8 +179,8 @@ export default function ZthixDeterministicStorefront() {
       btn_transmit: "小红书交流",
       copy_btn: "复制凭证号",
       copied_btn: "已复制!",
-      opscore_label: "OPSCORE (物流审计)",
-      recon_label: "RECON (财务解剖)",
+      opscore_label: "OPSCORE (单证审计)",
+      recon_label: "RECON (财务纠错)",
       
       contact_title: "运营中心",
       contact_links: [
