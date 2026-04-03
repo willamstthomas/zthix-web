@@ -16,12 +16,11 @@ export async function POST(request: Request) {
     
     const sql = neon(process.env.DATABASE_URL);
 
-    // 1. ISOLATE UNBILLED LABOR
-    // FIX 1: Correctly targeting e.id (not event_id)
+    // 1. ISOLATE UNBILLED LABOR: Restored correct primary key 'event_id'
     const unratedEvents = await sql`
-      SELECT e.id, e.actor_id as clerk_id, e.resource_id, e.project_type 
+      SELECT e.event_id, e.actor_id as clerk_id, e.resource_id, e.project_type 
       FROM uesa_event_log e
-      LEFT JOIN uesa_client_ledger c ON e.id = c.event_id
+      LEFT JOIN uesa_client_ledger c ON e.event_id = c.event_id
       WHERE e.action LIKE 'HUMAN_RESOLUTION_%' 
       AND c.event_id IS NULL
     `;
@@ -31,6 +30,9 @@ export async function POST(request: Request) {
     }
 
     let processedVolume = 0;
+    
+    // DYNAMIC METADATA GENERATOR: Create 'YYYY-MM' to satisfy the NOT NULL database constraint
+    const currentBillingPeriod = new Date().toISOString().substring(0, 7);
 
     for (const ev of unratedEvents) {
       // 2. THE CRYPTOGRAPHIC JOIN
@@ -45,29 +47,28 @@ export async function POST(request: Request) {
       const targetSei = ingestionRecord.length > 0 ? ingestionRecord[0].actor_id : 'UNKNOWN_SEI';
 
       // 3. TARIFF OVERRIDE
-      // FIX 2: Bypassing the broken tariff table and using deterministic math
       const rateUsd = (ev.project_type === 'OPSCORE' ? 0.50 : 2.00);
 
-      // 4. BILL CLIENT (LEDGER M)
+      // 4. BILL CLIENT (LEDGER M): Injected billing_period to satisfy schema
       if (targetSei !== 'UNKNOWN_SEI' && targetSei !== 'Anonymous / Not Provided') {
         await sql`
-          INSERT INTO uesa_client_ledger (client_id, event_id, project_type, billed_usd, status)
-          VALUES (${targetSei}, ${ev.id}, ${ev.project_type}, ${rateUsd}, 'UNPAID')
+          INSERT INTO uesa_client_ledger (client_id, event_id, project_type, billed_usd, billing_period, status)
+          VALUES (${targetSei}, ${ev.event_id}, ${ev.project_type}, ${rateUsd}, ${currentBillingPeriod}, 'UNPAID')
         `;
       }
 
       // 5. PAY CLERK (LEDGER H)
-      const clerkCheck = await sql`SELECT event_id FROM uesa_clerk_ledger WHERE event_id = ${ev.id}`;
+      const clerkCheck = await sql`SELECT event_id FROM uesa_clerk_ledger WHERE event_id = ${ev.event_id}`;
       if (clerkCheck.length === 0) {
         await sql`
           INSERT INTO uesa_clerk_ledger (clerk_id, event_id, project_type, earned_usd)
-          VALUES (${ev.clerk_id}, ${ev.id}, ${ev.project_type}, ${rateUsd})
+          VALUES (${ev.clerk_id}, ${ev.event_id}, ${ev.project_type}, ${rateUsd})
         `;
       }
 
       // 6. SEAL EVENT
       await sql`
-        UPDATE uesa_event_log SET financial_status = 'RATED' WHERE id = ${ev.id}
+        UPDATE uesa_event_log SET financial_status = 'RATED' WHERE event_id = ${ev.event_id}
       `;
       
       processedVolume++;
