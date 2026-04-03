@@ -3,15 +3,18 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { ticketId, clerkId, projectType, outcome, passcode } = await request.json();
+    const payload = await request.json();
+    const { clerkId, projectType, outcome, passcode } = payload;
+    
+    // BACKWARD COMPATIBILITY: Supports single ticket (Desk) or batch array (Factory)
+    const ticketIds: string[] = payload.ticketIds || (payload.ticketId ? [payload.ticketId] : []);
 
-    // The Front Door Guard. Do not leak this passcode. 
-    // This prevents malicious internet scrapers from injecting fake resolutions.
+    // Absolute perimeter defense
     if (passcode !== 'ZTHIX-ALPHA-777') {
-      return NextResponse.json({ error: 'Unauthorized payload.' }, { status: 403 });
+      return NextResponse.json({ error: 'Unauthorized payload. Intrusion logged.' }, { status: 403 });
     }
 
-    if (!ticketId || !clerkId || !projectType || !outcome) {
+    if (!clerkId || !projectType || !outcome || ticketIds.length === 0) {
       return NextResponse.json({ error: 'Incomplete parameter matrix.' }, { status: 400 });
     }
 
@@ -20,25 +23,30 @@ export async function POST(request: Request) {
     }
 
     const sql = neon(process.env.DATABASE_URL);
-    
-    // Construct the UESA standard action string (e.g., 'HUMAN_RESOLUTION_GREEN')
     const dbAction = `HUMAN_RESOLUTION_${outcome}`;
+    const timestamp = new Date().toISOString();
 
-    // Inject the immutable record into the Event Log
-    await sql`
-      INSERT INTO uesa_event_log (actor_id, action, resource_id, project_type, context_payload)
-      VALUES (
-        ${clerkId}, 
-        ${dbAction}, 
-        ${ticketId}, 
-        ${projectType}, 
-        ${JSON.stringify({ status: outcome, timestamp: new Date().toISOString() })}::jsonb
-      )
-    `;
+    // BATCH EXECUTION: Loop through the array and lock each UID into the ledger
+    for (const tid of ticketIds) {
+      await sql`
+        INSERT INTO uesa_event_log (actor_id, action, resource_id, project_type, context_payload)
+        VALUES (
+          ${clerkId}, 
+          ${dbAction}, 
+          ${tid}, 
+          ${projectType}, 
+          ${JSON.stringify({ status: outcome, timestamp, batch_processed: true })}::jsonb
+        )
+      `;
+    }
 
-    return NextResponse.json({ success: true, message: 'Resolution locked into UESA Ledger.' });
+    return NextResponse.json({ 
+      success: true, 
+      message: `Batch Resolution Locked. ${ticketIds.length} UIDs secured in Ledger.` 
+    });
+
   } catch (error) {
-    console.error('UESA Clerk API Error:', error);
-    return NextResponse.json({ error: 'Ledger injection failed.' }, { status: 500 });
+    console.error('UESA Clerk Batch API Error:', error);
+    return NextResponse.json({ error: 'Ledger batch injection failed.' }, { status: 500 });
   }
 }
