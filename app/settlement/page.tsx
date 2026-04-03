@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Shield, Fingerprint, QrCode, Loader2, AlertTriangle, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
+import { Shield, Fingerprint, QrCode, Loader2, AlertTriangle, ExternalLink, Copy, CheckCircle2, Database } from 'lucide-react';
 
 interface InvoiceItem {
   project: string;
@@ -75,7 +75,8 @@ function SettlementGateway() {
     );
   }
 
-  const isZeroBalance = invoice?.total_usd === "0.00" || invoice?.items.length === 0;
+  // Patched Strict TypeScript Evaluation
+  const isZeroBalance = invoice?.total_usd === "0.00" || (invoice?.items?.length || 0) === 0;
 
   return (
     <div className="min-h-screen bg-[#030712] text-slate-300 font-mono py-16 px-4 flex flex-col items-center selection:bg-cyan-900/50">
@@ -114,7 +115,8 @@ function SettlementGateway() {
               <p className="text-[10px] text-slate-500 tracking-widest font-bold uppercase mb-4 border-b border-slate-800 pb-2">Itemized Liability Breakdown</p>
               
               <div className="space-y-6">
-                {invoice?.items.map((item, idx) => (
+                {/* Patched Strict TypeScript Evaluation */}
+                {invoice?.items?.map((item, idx) => (
                   <div key={idx} className="bg-slate-900/50 border border-slate-800 rounded p-4">
                     <div className="flex justify-between items-start mb-4">
                       <div>
@@ -170,7 +172,7 @@ function SettlementGateway() {
               <div className="text-center md:text-right">
                 <p className="text-[10px] text-slate-500 tracking-widest font-bold uppercase mb-1">Total Liability</p>
                 <p className="text-4xl font-bold text-white tracking-wider mb-2">${invoice?.total_usd} <span className="text-lg text-slate-500">USD</span></p>
-                <p className="text-[9px] text-cyan-500/70 max-w-[200px] leading-relaxed">
+                <p className="text-[9px] text-cyan-500/70 max-w-[200px] md:ml-auto leading-relaxed">
                   * RMB exchange rate based on day of payment. Processing limits reset upon cryptographic receipt.
                 </p>
               </div>
