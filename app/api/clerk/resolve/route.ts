@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const ticketIds: string[] = payload.ticketIds || (payload.ticketId ? [payload.ticketId] : []);
 
     if (passcode !== 'ZTHIX-ALPHA-777') {
-      return NextResponse.json({ error: 'Unauthorized payload. Intrusion logged.' }, { status: 403, headers: corsHeaders });
+      return NextResponse.json({ error: 'Unauthorized payload.' }, { status: 403, headers: corsHeaders });
     }
 
     if (!clerkId || !projectType || !outcome || ticketIds.length === 0) {
@@ -32,24 +32,27 @@ export async function POST(request: Request) {
 
     const sql = neon(process.env.DATABASE_URL);
     const dbAction = `HUMAN_RESOLUTION_${outcome}`;
-    const timestamp = new Date().toISOString();
+    
+    // ENFORCE STRICT UPPERCASE SEI STANDARDS
+    const safeClientId = clientId ? clientId.trim().toUpperCase() : null;
 
     for (const tid of ticketIds) {
-      // 1. FORGE THE ANCHOR: Tie the UID to the Client SEI so the Sweep Engine can bill it
-      if (clientId) {
+      if (safeClientId) {
         await sql`
           INSERT INTO uesa_event_log (actor_id, action, resource_id, project_type, context_payload)
           VALUES (
-            ${clientId}, 
+            ${safeClientId}, 
             'PENDING_RATING', 
             ${tid}, 
             ${projectType}, 
             ${JSON.stringify({ origin: 'factory_direct_batch' })}::jsonb
           )
         `;
+        
+        // MATHEMATICAL OFFSET: Force a 10ms delay to guarantee sequential chronography for the Sweep Engine
+        await new Promise(resolve => setTimeout(resolve, 10));
       }
 
-      // 2. LOCK THE RESOLUTION: Log the clerk's labor
       await sql`
         INSERT INTO uesa_event_log (actor_id, action, resource_id, project_type, context_payload)
         VALUES (
@@ -57,14 +60,14 @@ export async function POST(request: Request) {
           ${dbAction}, 
           ${tid}, 
           ${projectType}, 
-          ${JSON.stringify({ status: outcome, timestamp, batch_processed: true })}::jsonb
+          ${JSON.stringify({ status: outcome, batch_processed: true })}::jsonb
         )
       `;
     }
 
     return NextResponse.json({ 
       success: true, 
-      message: `Batch Resolution Locked. ${ticketIds.length} UIDs secured to SEI ${clientId || 'UNKNOWN'}.` 
+      message: `Batch Resolution Locked.` 
     }, { headers: corsHeaders });
 
   } catch (error) {
