@@ -16,11 +16,12 @@ export async function POST(request: Request) {
     
     const sql = neon(process.env.DATABASE_URL);
 
-    // 1. ISOLATE UNBILLED LABOR: Correctly link 'id' from event log to 'event_id' in client ledger
+    // 1. ISOLATE UNBILLED LABOR: Corrected to use 'event_id'.
+    // Relies purely on the LEFT JOIN math. If no receipt exists in Ledger M, it must be swept.
     const unratedEvents = await sql`
-      SELECT e.id, e.actor_id as clerk_id, e.resource_id, e.project_type 
+      SELECT e.event_id, e.actor_id as clerk_id, e.resource_id, e.project_type 
       FROM uesa_event_log e
-      LEFT JOIN uesa_client_ledger c ON e.id = c.event_id
+      LEFT JOIN uesa_client_ledger c ON e.event_id = c.event_id
       WHERE e.action LIKE 'HUMAN_RESOLUTION_%' 
       AND c.event_id IS NULL
     `;
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     let processedVolume = 0;
 
     for (const ev of unratedEvents) {
-      // 2. THE CRYPTOGRAPHIC JOIN
+      // 2. THE CRYPTOGRAPHIC JOIN: Find the SEI that ingested this specific ZTHIX-UID
       const ingestionRecord = await sql`
         SELECT actor_id 
         FROM uesa_event_log 
@@ -53,23 +54,19 @@ export async function POST(request: Request) {
       if (targetSei !== 'UNKNOWN_SEI' && targetSei !== 'Anonymous / Not Provided') {
         await sql`
           INSERT INTO uesa_client_ledger (client_id, event_id, project_type, billed_usd, status)
-          VALUES (${targetSei}, ${ev.id}, ${ev.project_type}, ${rateUsd}, 'UNPAID')
+          VALUES (${targetSei}, ${ev.event_id}, ${ev.project_type}, ${rateUsd}, 'UNPAID')
         `;
       }
 
       // 5. PAY CLERK (LEDGER H)
-      const clerkCheck = await sql`SELECT event_id FROM uesa_clerk_ledger WHERE event_id = ${ev.id}`;
+      // Double-entry safety lock prevents duplicating payroll
+      const clerkCheck = await sql`SELECT event_id FROM uesa_clerk_ledger WHERE event_id = ${ev.event_id}`;
       if (clerkCheck.length === 0) {
         await sql`
           INSERT INTO uesa_clerk_ledger (clerk_id, event_id, project_type, earned_usd)
-          VALUES (${ev.clerk_id}, ${ev.id}, ${ev.project_type}, ${rateUsd})
+          VALUES (${ev.clerk_id}, ${ev.event_id}, ${ev.project_type}, ${rateUsd})
         `;
       }
-
-      // 6. SEAL EVENT
-      await sql`
-        UPDATE uesa_event_log SET financial_status = 'RATED' WHERE id = ${ev.id}
-      `;
       
       processedVolume++;
     }
