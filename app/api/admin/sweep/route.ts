@@ -16,16 +16,17 @@ export async function POST(request: Request) {
     
     const sql = neon(process.env.DATABASE_URL);
 
-    // 1. ISOLATE UNRATED LABOR: Corrected primary key to 'event_id'
+    // 1. ISOLATE UNBILLED LABOR: Bypass text strings. Mathematically check if the event exists in Ledger M.
     const unratedEvents = await sql`
-      SELECT event_id, actor_id as clerk_id, resource_id, project_type 
-      FROM uesa_event_log 
-      WHERE action LIKE 'HUMAN_RESOLUTION_%' 
-      AND (financial_status = 'UNRATED' OR financial_status IS NULL)
+      SELECT e.event_id, e.actor_id as clerk_id, e.resource_id, e.project_type 
+      FROM uesa_event_log e
+      LEFT JOIN uesa_client_ledger c ON e.event_id = c.event_id
+      WHERE e.action LIKE 'HUMAN_RESOLUTION_%' 
+      AND c.event_id IS NULL
     `;
 
     if (unratedEvents.length === 0) {
-      return NextResponse.json({ success: true, message: 'SWEEP COMPLETE. NO UNRATED EVENTS FOUND.' });
+      return NextResponse.json({ success: true, message: 'NO UNBILLED EVENTS FOUND.' });
     }
 
     let processedVolume = 0;
@@ -42,15 +43,13 @@ export async function POST(request: Request) {
       
       const targetSei = ingestionRecord.length > 0 ? ingestionRecord[0].actor_id : 'UNKNOWN_SEI';
 
-      // 3. TARIFF EXTRACTION: Query the master pricing matrix
+      // 3. TARIFF EXTRACTION
       const tariffRecord = await sql`
         SELECT base_rate_usd FROM uesa_tariff_book WHERE project_type = ${ev.project_type} LIMIT 1
       `;
-      // Fallback matrix if tariff book is empty
       const rateUsd = tariffRecord.length > 0 ? tariffRecord[0].base_rate_usd : (ev.project_type === 'OPSCORE' ? 0.50 : 2.00);
 
-      // 4. BILL THE CLIENT (LEDGER M)
-      // We explicitly reject anonymous black holes. Only bill valid SEIs.
+      // 4. BILL CLIENT (LEDGER M)
       if (targetSei !== 'UNKNOWN_SEI' && targetSei !== 'Anonymous / Not Provided') {
         await sql`
           INSERT INTO uesa_client_ledger (client_id, event_id, project_type, billed_usd, status)
@@ -58,13 +57,17 @@ export async function POST(request: Request) {
         `;
       }
 
-      // 5. PAY THE CLERK (LEDGER H)
-      await sql`
-        INSERT INTO uesa_clerk_ledger (clerk_id, event_id, project_type, earned_usd)
-        VALUES (${ev.clerk_id}, ${ev.event_id}, ${ev.project_type}, ${rateUsd})
-      `;
+      // 5. PAY CLERK (LEDGER H)
+      // Double-entry safety check to prevent paying the clerk twice if the client side fails
+      const clerkCheck = await sql`SELECT event_id FROM uesa_clerk_ledger WHERE event_id = ${ev.event_id}`;
+      if (clerkCheck.length === 0) {
+        await sql`
+          INSERT INTO uesa_clerk_ledger (clerk_id, event_id, project_type, earned_usd)
+          VALUES (${ev.clerk_id}, ${ev.event_id}, ${ev.project_type}, ${rateUsd})
+        `;
+      }
 
-      // 6. SEAL THE EVENT: Corrected target to 'event_id'
+      // 6. SEAL EVENT
       await sql`
         UPDATE uesa_event_log SET financial_status = 'RATED' WHERE event_id = ${ev.event_id}
       `;
@@ -74,11 +77,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `SWEEP COMPLETE. LEDGERS M & H SYNCHRONIZED. ${processedVolume} EVENTS LOCKED.` 
+      message: `SWEEP COMPLETE. ${processedVolume} EVENTS LOCKED.` 
     });
 
   } catch (error) {
     console.error('UESA Master Sweep Error:', error);
-    return NextResponse.json({ error: 'Fatal error during ledger synchronization.' }, { status: 500 });
+    return NextResponse.json({ error: 'Fatal error.' }, { status: 500 });
   }
 }
