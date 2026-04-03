@@ -54,7 +54,7 @@ export default function ZthixAdminCommand() {
               <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Terminal Log</span>
             </div>
             <p className={`text-sm ${status === 'success' ? 'text-green-400' : status === 'error' ? 'text-red-400' : 'text-purple-400'}`}>
-              > {log}
+              &gt; {log}
             </p>
           </div>
 
