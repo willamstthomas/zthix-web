@@ -1,6 +1,21 @@
 import { neon } from '@neondatabase/serverless';
 import { NextResponse } from 'next/server';
 
+// --- THE CORS FIREWALL WHITELIST ---
+// Explicitly authorizes the Factory Floor to inject data into the Accounting Ledger
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://zthix-opscore.vercel.app',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// --- PREFLIGHT HANDLER ---
+// Browsers send a blank "OPTIONS" ping before the real POST to check security. We must reply 'OK'.
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
+// --- THE MASTER RESOLUTION ENGINE ---
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
@@ -11,11 +26,11 @@ export async function POST(request: Request) {
 
     // Absolute perimeter defense
     if (passcode !== 'ZTHIX-ALPHA-777') {
-      return NextResponse.json({ error: 'Unauthorized payload. Intrusion logged.' }, { status: 403 });
+      return NextResponse.json({ error: 'Unauthorized payload. Intrusion logged.' }, { status: 403, headers: corsHeaders });
     }
 
     if (!clerkId || !projectType || !outcome || ticketIds.length === 0) {
-      return NextResponse.json({ error: 'Incomplete parameter matrix.' }, { status: 400 });
+      return NextResponse.json({ error: 'Incomplete parameter matrix.' }, { status: 400, headers: corsHeaders });
     }
 
     if (!process.env.DATABASE_URL) {
@@ -43,10 +58,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       success: true, 
       message: `Batch Resolution Locked. ${ticketIds.length} UIDs secured in Ledger.` 
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('UESA Clerk Batch API Error:', error);
-    return NextResponse.json({ error: 'Ledger batch injection failed.' }, { status: 500 });
+    return NextResponse.json({ error: 'Ledger batch injection failed.' }, { status: 500, headers: corsHeaders });
   }
 }
