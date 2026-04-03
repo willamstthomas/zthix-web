@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     
     const sql = neon(process.env.DATABASE_URL);
 
-    // 1. ISOLATE UNBILLED LABOR: Restored correct primary key 'event_id'
+    // 1. ISOLATE UNBILLED LABOR
     const unratedEvents = await sql`
       SELECT e.event_id, e.actor_id as clerk_id, e.resource_id, e.project_type 
       FROM uesa_event_log e
@@ -31,8 +31,8 @@ export async function POST(request: Request) {
 
     let processedVolume = 0;
     
-    // DYNAMIC METADATA GENERATOR: Create 'YYYY-MM' to satisfy the NOT NULL database constraint
-    const currentBillingPeriod = new Date().toISOString().substring(0, 7);
+    // DYNAMIC METADATA GENERATOR: YYYY-MM
+    const currentPeriod = new Date().toISOString().substring(0, 7);
 
     for (const ev of unratedEvents) {
       // 2. THE CRYPTOGRAPHIC JOIN
@@ -49,20 +49,20 @@ export async function POST(request: Request) {
       // 3. TARIFF OVERRIDE
       const rateUsd = (ev.project_type === 'OPSCORE' ? 0.50 : 2.00);
 
-      // 4. BILL CLIENT (LEDGER M): Injected billing_period to satisfy schema
+      // 4. BILL CLIENT (LEDGER M)
       if (targetSei !== 'UNKNOWN_SEI' && targetSei !== 'Anonymous / Not Provided') {
         await sql`
           INSERT INTO uesa_client_ledger (client_id, event_id, project_type, billed_usd, billing_period, status)
-          VALUES (${targetSei}, ${ev.event_id}, ${ev.project_type}, ${rateUsd}, ${currentBillingPeriod}, 'UNPAID')
+          VALUES (${targetSei}, ${ev.event_id}, ${ev.project_type}, ${rateUsd}, ${currentPeriod}, 'UNPAID')
         `;
       }
 
-      // 5. PAY CLERK (LEDGER H)
+      // 5. PAY CLERK (LEDGER H): Injected payroll_period to satisfy schema constraint
       const clerkCheck = await sql`SELECT event_id FROM uesa_clerk_ledger WHERE event_id = ${ev.event_id}`;
       if (clerkCheck.length === 0) {
         await sql`
-          INSERT INTO uesa_clerk_ledger (clerk_id, event_id, project_type, earned_usd)
-          VALUES (${ev.clerk_id}, ${ev.event_id}, ${ev.project_type}, ${rateUsd})
+          INSERT INTO uesa_clerk_ledger (clerk_id, event_id, project_type, earned_usd, payroll_period)
+          VALUES (${ev.clerk_id}, ${ev.event_id}, ${ev.project_type}, ${rateUsd}, ${currentPeriod})
         `;
       }
 
