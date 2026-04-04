@@ -38,15 +38,17 @@ export async function POST(request: Request) {
       access: 'public',
     });
 
-    // B. WRITE TO THE MASTER LEDGER
+ // B. WRITE TO THE MASTER LEDGER
     const sql = neon(process.env.DATABASE_URL);
     const queueStatus = riskLevel === 'GREEN' ? 'COMPLETED' : 'PENDING_CLERK';
 
+    // INJECTED 'content' COLUMN TO SATISFY POSTGRESQL NOT NULL CONSTRAINT
+    // Stripped strict ::jsonb cast to ensure universal compatibility
     await sql`
       INSERT INTO uesa_event_log
-      (actor_id, action, resource_id, project_type, cloud_storage_url, queue_status)
+      (actor_id, action, resource_id, project_type, cloud_storage_url, queue_status, content)
       VALUES
-      (${sei}, 'PENDING_RATING', ${uid}, ${projectType}, ${blob.url}, ${queueStatus})
+      (${sei}, 'PENDING_RATING', ${uid}, ${projectType}, ${blob.url}, ${queueStatus}, '{}')
     `;
 
     return NextResponse.json({
