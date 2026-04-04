@@ -5,23 +5,20 @@ export async function POST(request: Request) {
   try {
     const { adminPasscode } = await request.json();
     
-    // Perimeter Defense
     if (adminPasscode !== 'ZTHIX-OMEGA-999') {
       return NextResponse.json({ error: 'Root access denied.' }, { status: 403 });
     }
 
-    if (!process.env.DATABASE_URL) {
-      throw new Error('DATABASE_URL environment variable severed.');
-    }
+    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL environment variable severed.');
     
     const sql = neon(process.env.DATABASE_URL);
 
-    // 1. ISOLATE UNBILLED LABOR
+    // 1. ISOLATE UNBILLED LABOR (Catches both Manual Resolutions and Automated Clearances)
     const unratedEvents = await sql`
-      SELECT e.event_id, e.actor_id as clerk_id, e.resource_id, e.project_type 
+      SELECT e.event_id, e.actor_id as clerk_id, e.resource_id, e.project_type, e.action 
       FROM uesa_event_log e
       LEFT JOIN uesa_client_ledger c ON e.event_id = c.event_id
-      WHERE e.action LIKE 'HUMAN_RESOLUTION_%' 
+      WHERE (e.action LIKE 'HUMAN_RESOLUTION_%' OR e.action LIKE 'SYSTEM_%' OR e.action LIKE 'AUTO_%')
       AND c.event_id IS NULL
     `;
 
@@ -30,24 +27,27 @@ export async function POST(request: Request) {
     }
 
     let processedVolume = 0;
-    
-    // DYNAMIC METADATA GENERATOR: YYYY-MM
     const currentPeriod = new Date().toISOString().substring(0, 7);
 
     for (const ev of unratedEvents) {
       // 2. THE CRYPTOGRAPHIC JOIN
       const ingestionRecord = await sql`
-        SELECT actor_id 
-        FROM uesa_event_log 
-        WHERE resource_id = ${ev.resource_id} 
-        AND action = 'PENDING_RATING' 
-        LIMIT 1
+        SELECT actor_id FROM uesa_event_log 
+        WHERE resource_id = ${ev.resource_id} AND action = 'PENDING_RATING' LIMIT 1
       `;
-      
       const targetSei = ingestionRecord.length > 0 ? ingestionRecord[0].actor_id : 'UNKNOWN_SEI';
 
-      // 3. TARIFF OVERRIDE
-      const rateUsd = (ev.project_type === 'OPSCORE' ? 0.50 : 2.00);
+      // 3. STARTUP PENETRATION PRICING MATRIX
+      let rateUsd = 0.60;      // Default Green (Automated)
+      let clerkEarned = 0.00;  // Pure profit, no clerk cost
+
+      if (ev.action === 'HUMAN_RESOLUTION_GREEN') {
+        rateUsd = 2.50;        // Yellow Tier (Repaired)
+        clerkEarned = 0.70;    // Inland clerk wage
+      } else if (ev.action === 'HUMAN_RESOLUTION_RED') {
+        rateUsd = 12.00;       // Red Tier (Audit Recovery)
+        clerkEarned = 3.00;    // Auditor Bounty
+      }
 
       // 4. BILL CLIENT (LEDGER M)
       if (targetSei !== 'UNKNOWN_SEI' && targetSei !== 'Anonymous / Not Provided') {
@@ -57,30 +57,27 @@ export async function POST(request: Request) {
         `;
       }
 
-      // 5. PAY CLERK (LEDGER H): Injected payroll_period to satisfy schema constraint
-      const clerkCheck = await sql`SELECT event_id FROM uesa_clerk_ledger WHERE event_id = ${ev.event_id}`;
-      if (clerkCheck.length === 0) {
-        await sql`
-          INSERT INTO uesa_clerk_ledger (clerk_id, event_id, project_type, earned_usd, payroll_period)
-          VALUES (${ev.clerk_id}, ${ev.event_id}, ${ev.project_type}, ${rateUsd}, ${currentPeriod})
-        `;
+      // 5. PAY CLERK (LEDGER H) - Only if a clerk was involved
+      if (clerkEarned > 0) {
+        const clerkCheck = await sql`SELECT event_id FROM uesa_clerk_ledger WHERE event_id = ${ev.event_id}`;
+        if (clerkCheck.length === 0) {
+          await sql`
+            INSERT INTO uesa_clerk_ledger (clerk_id, event_id, project_type, earned_usd, payroll_period)
+            VALUES (${ev.clerk_id}, ${ev.event_id}, ${ev.project_type}, ${clerkEarned}, ${currentPeriod})
+          `;
+        }
       }
 
       // 6. SEAL EVENT
-      await sql`
-        UPDATE uesa_event_log SET financial_status = 'RATED' WHERE event_id = ${ev.event_id}
-      `;
+      await sql`UPDATE uesa_event_log SET financial_status = 'RATED' WHERE event_id = ${ev.event_id}`;
       
       processedVolume++;
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `SWEEP COMPLETE. ${processedVolume} EVENTS LOCKED.` 
-    });
+    return NextResponse.json({ success: true, message: `SWEEP COMPLETE. ${processedVolume} EVENTS LOCKED IN MATRIX.` });
 
   } catch (error) {
-    console.error('UESA Master Sweep Error:', error);
+    console.error('UESA Matrix Sweep Error:', error);
     return NextResponse.json({ error: 'Fatal error.' }, { status: 500 });
   }
 }
