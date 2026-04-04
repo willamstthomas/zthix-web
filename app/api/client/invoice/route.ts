@@ -7,69 +7,50 @@ export async function GET(request: Request) {
     const sei = searchParams.get('sei');
 
     if (!sei) {
-      return NextResponse.json({ error: 'Target SEI required.' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing Target SEI.' }, { status: 400 });
     }
 
-    if (!process.env.DATABASE_URL) {
-      throw new Error('DATABASE_URL environment variable is severed.');
-    }
-
+    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL severed.');
     const sql = neon(process.env.DATABASE_URL);
 
-    // Bulletproof Join: Case-insensitive matching, LEFT JOIN prevents silent row drops
-    const rawLedger = await sql`
+    // Mathematical Aggregation: Group by project_type AND billed_usd (The Tier)
+    const ledgerEntries = await sql`
       SELECT 
-        l.invoice_id,
-        l.project_type, 
-        l.billed_usd, 
-        e.resource_id as zthix_uid
-      FROM uesa_client_ledger l
-      LEFT JOIN uesa_event_log e ON l.event_id = e.event_id
-      WHERE UPPER(l.client_id) = UPPER(${sei}) AND l.status = 'UNPAID'
-      ORDER BY l.project_type DESC
+        c.project_type, 
+        c.billed_usd as unit_price,
+        COUNT(c.event_id) as volume, 
+        SUM(c.billed_usd) as subtotal_usd,
+        array_agg(e.resource_id) as uids
+      FROM uesa_client_ledger c
+      JOIN uesa_event_log e ON c.event_id = e.event_id
+      WHERE c.client_id = ${sei} AND c.status = 'UNPAID'
+      GROUP BY c.project_type, c.billed_usd
+      ORDER BY c.billed_usd ASC
     `;
 
-    if (rawLedger.length === 0) {
-      return NextResponse.json({ 
-        sei: sei.toUpperCase(), 
-        total_usd: "0.00", 
-        message: 'NO OUTSTANDING LIABILITY',
-        items: [] 
-      });
+    if (ledgerEntries.length === 0) {
+      return NextResponse.json({ sei: sei, total_usd: "0.00", items: [] });
     }
 
-    let totalUsd = 0;
-    const itemizedGroups: Record<string, any> = {};
-
-    rawLedger.forEach(row => {
-      const amount = parseFloat(row.billed_usd);
-      totalUsd += amount;
-
-      if (!itemizedGroups[row.project_type]) {
-        itemizedGroups[row.project_type] = {
-          project: row.project_type,
-          volume: 0,
-          subtotal_usd: 0,
-          uids: []
-        };
-      }
-
-      itemizedGroups[row.project_type].volume += 1;
-      itemizedGroups[row.project_type].subtotal_usd += amount;
-      
-      if (row.zthix_uid) {
-        itemizedGroups[row.project_type].uids.push(row.zthix_uid);
-      }
+    let grandTotal = 0;
+    const formattedItems = ledgerEntries.map(entry => {
+      grandTotal += Number(entry.subtotal_usd);
+      return {
+        project: entry.project_type,
+        volume: Number(entry.volume),
+        subtotal_usd: Number(entry.subtotal_usd),
+        uids: entry.uids
+      };
     });
 
     return NextResponse.json({
-      sei: sei.toUpperCase(),
-      total_usd: totalUsd.toFixed(2),
-      items: Object.values(itemizedGroups)
+      sei: sei,
+      total_usd: grandTotal.toFixed(2),
+      items: formattedItems
     });
 
   } catch (error) {
-    console.error('UESA Invoice Extraction Error:', error);
-    return NextResponse.json({ error: 'Ledger synchronization failed.' }, { status: 500 });
+    console.error('Invoice Fetch Error:', error);
+    return NextResponse.json({ error: 'Failed to synchronize with Ledger M.' }, { status: 500 });
   }
 }
