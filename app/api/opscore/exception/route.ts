@@ -42,13 +42,13 @@ export async function POST(request: Request) {
     const sql = neon(process.env.DATABASE_URL);
     const queueStatus = riskLevel === 'GREEN' ? 'COMPLETED' : 'PENDING_CLERK';
 
-    // INJECTED 'content' COLUMN TO SATISFY POSTGRESQL NOT NULL CONSTRAINT
-    // Stripped strict ::jsonb cast to ensure universal compatibility
+    // INJECTED 'context' COLUMN TO SATISFY POSTGRESQL NOT NULL CONSTRAINT
+    // Passed as a secure string parameter to satisfy the Neon database driver
     await sql`
       INSERT INTO uesa_event_log
-      (actor_id, action, resource_id, project_type, cloud_storage_url, queue_status, content)
+      (actor_id, action, resource_id, project_type, cloud_storage_url, queue_status, context)
       VALUES
-      (${sei}, 'PENDING_RATING', ${uid}, ${projectType}, ${blob.url}, ${queueStatus}, '{}')
+      (${sei}, 'PENDING_RATING', ${uid}, ${projectType}, ${blob.url}, ${queueStatus}, ${'{}'})
     `;
 
     return NextResponse.json({
