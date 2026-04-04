@@ -2,6 +2,19 @@ import { put } from '@vercel/blob';
 import { neon } from '@neondatabase/serverless';
 import { NextResponse } from 'next/server';
 
+// 1. INJECT THE SHIELD-LOWERING PROTOCOL (CORS)
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// 2. HANDLE THE BROWSER'S PREFLIGHT RADAR PING
+export async function OPTIONS(request: Request) {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
+// 3. THE MAIN INGESTION ENGINE
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -12,20 +25,21 @@ export async function POST(request: Request) {
     const projectType = formData.get('projectType') as string || 'OPSCORE';
 
     if (!file || !uid || !sei) {
-      return NextResponse.json({ error: 'Missing critical cryptographic payloads.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Missing critical cryptographic payloads.' }, 
+        { status: 400, headers: corsHeaders }
+      );
     }
 
     if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL severed.');
     
-    // 1. UPLOAD TO THE CLOUD VAULT
+    // A. UPLOAD TO THE CLOUD VAULT
     const blob = await put(`exceptions/${uid}-${file.name}`, file, {
       access: 'public',
     });
 
-    // 2. WRITE TO THE MASTER LEDGER
+    // B. WRITE TO THE MASTER LEDGER
     const sql = neon(process.env.DATABASE_URL);
-
-    // If GREEN, bypass queue. If YELLOW/RED, lock in queue.
     const queueStatus = riskLevel === 'GREEN' ? 'COMPLETED' : 'PENDING_CLERK';
 
     await sql`
@@ -41,10 +55,13 @@ export async function POST(request: Request) {
       url: blob.url,
       queue_status: queueStatus,
       message: 'Payload secured in Cloud Vault and locked in Ledger.'
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('Cloud Ingestion Error:', error);
-    return NextResponse.json({ error: 'Fatal ingestion failure.' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Fatal ingestion failure.' }, 
+      { status: 500, headers: corsHeaders }
+    );
   }
 }
